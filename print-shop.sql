@@ -1,0 +1,56 @@
+CREATE TABLE Users(
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(70),
+    email VARCHAR(255),
+    password VARCHAR(255),
+    registration_date DATETIME,
+    role VARCHAR(30)
+)
+
+CREATE TABLE Files(
+    file_id int AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    file_name VARCHAR(200),
+    file_type VARCHAR(254),
+    file_size INT,
+    status VARCHAR(50),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+)
+
+CREATE TABLE Orders(
+    order_id int AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    order_date DATETIME,
+    status VARCHAR(200),
+    total_price INT,
+    payment_status VARCHAR(200),
+    FOREIGN KEY(user_id) REFERENCES Users(user_id)
+)
+
+CREATE TABLE Tetel_fajlok (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_item_id INT,
+    file_id INT,
+    FOREIGN KEY (order_item_id) REFERENCES Order_items(order_item_id),
+    FOREIGN KEY (file_id) REFERENCES Files(file_id)
+);
+
+
+CREATE TABLE Order_items (
+    order_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    subtotal INT,
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+
+
+CREATE TABLE Products (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    description VARCHAR(200),
+    base_price INT,
+    category VARCHAR(20),
+    in_stock BOOLEAN
+);
