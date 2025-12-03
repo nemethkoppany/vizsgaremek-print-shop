@@ -56,3 +56,56 @@ export const registerUser = async (req: Request, res: Response) => {
     await connection.end();
   }
 };
+
+export const loginUser = async(req: Request, res: Response) =>{
+  const {email, password} = req.body;
+
+  if(!email ||!password){
+    res.status(400).json("Hiányzó adatok!");
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try{
+    const [rows] = await connection.query(
+      "SELECT user_id, name, email, password, role FROM Users WHERE email = ?",[email]
+    );
+
+    const users = rows as any[];
+
+    if(users.length === 0){
+      return res.status(401).json("Hibás email vagy jelszó");
+    }
+
+    const user = users[0];
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if(!isMatch){
+      return res.status(401).json("A jelszó nem lehet ugyan az mint az eredeti jelszó");
+    }
+
+    const accessToken = jwt.sign(
+      {user_id: user.user_id,
+        email:user.email,
+        role:user.role
+      },
+      process.env.JWT_SECRET!,
+      {expiresIn:'1h'}
+    )
+
+    return res.status(200).json({
+      user_id: user.user_id,
+      email: user.email,
+      full_name: user.name,
+      role: user.role,
+      accessToken
+    })
+  }
+  catch(err){
+    console.error(err);
+    return res.status(500).json("Szerver hiba");
+  }
+  finally{
+    await connection.end();
+  }
+}
