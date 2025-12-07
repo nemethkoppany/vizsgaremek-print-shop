@@ -109,3 +109,58 @@ export const loginUser = async(req: Request, res: Response) =>{
     await connection.end();
   }
 }
+
+export const changePassword = async (req: any, res: Response) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ message: "Hiányzó adatok" });
+  }
+
+  const userId = req.user?.user_id;
+  if (!userId) {
+    return res.status(401).json({ message: "Nincs bejelentkezve" });
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+
+    const [rows] = await connection.query(
+      "SELECT password FROM Users WHERE user_id = ?",
+      [userId]
+    );
+
+    const users = rows as any[];
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "Felhasználó nem található" });
+    }
+
+    const existingHashedPassword = users[0].password;
+
+
+    const isMatch = await bcrypt.compare(oldPassword, existingHashedPassword);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "A régi jelszó hibás" });
+    }
+
+
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+
+    await connection.query(
+      "UPDATE Users SET password = ? WHERE user_id = ?",
+      [newHashedPassword, userId]
+    );
+
+    return res.status(200).json({ success: true });
+
+  } catch (err) {
+    console.error("Password change error:", err);
+    return res.status(500).json({ message: "Szerver hiba" });
+  } finally {
+    await connection.end();
+  }
+};
