@@ -4,11 +4,12 @@ import config from "./config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+//Egyenlőre itt lehet megadni a role-t, ez később még változhat
 export const registerUser = async (req: Request, res: Response) => {
-  const { email, full_name, password } = req.body;
+  const { email, full_name, password, role } = req.body; 
 
   if (!email || !full_name || !password) {
-    return res.status(400).json({ message: "Hiányzó adatok" });
+    return res.status(400).json( "Hiányzó adatok" );
   }
 
   const connection = await mysql.createConnection(config.database);
@@ -20,23 +21,24 @@ export const registerUser = async (req: Request, res: Response) => {
     );
 
     if ((existing as any[]).length > 0) {
-      return res.status(409).json({ message: "Ez az email már foglalt." });
+      return res.status(409).json(  "Ez az email már foglalt." );
     }
- 
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const role = "user";
+
+    const userRole = role && typeof role === "string" ? role : "user";
     const now = new Date();
 
     const [result] = await connection.query(
       `INSERT INTO Users (name, email, password, registration_date, role)
        VALUES (?, ?, ?, ?, ?)`,
-      [full_name, email, hashedPassword, now, role]
+      [full_name, email, hashedPassword, now, userRole]
     );
 
     const user_id = (result as any).insertId;
 
     const accessToken = jwt.sign(
-      { user_id, email, role },
+      { user_id, email, role: userRole },
       process.env.JWT_SECRET!,
       { expiresIn: "1h" }
     );
@@ -45,17 +47,18 @@ export const registerUser = async (req: Request, res: Response) => {
       user_id,
       email,
       full_name,
-      role,
+      role: userRole,
       accessToken
     });
 
   } catch (err) {
     console.error("Register error:", err);
-    return res.status(500).json({ message: "Szerver hiba" });
+    return res.status(500).json(  "Szerver hiba" );
   } finally {
     await connection.end();
   }
 };
+
 
 export const loginUser = async(req: Request, res: Response) =>{
   const {email, password} = req.body;
@@ -114,12 +117,12 @@ export const changePassword = async (req: any, res: Response) => {
   const { oldPassword, newPassword } = req.body;
 
   if (!oldPassword || !newPassword) {
-    return res.status(400).json({ message: "Hiányzó adatok" });
+    return res.status(400).json( "Hiányzó adatok" );
   }
 
   const userId = req.user?.user_id;
   if (!userId) {
-    return res.status(401).json({ message: "Nincs bejelentkezve" });
+    return res.status(401).json( "Nincs bejelentkezve" );
   }
 
   const connection = await mysql.createConnection(config.database);
@@ -134,7 +137,7 @@ export const changePassword = async (req: any, res: Response) => {
     const users = rows as any[];
 
     if (users.length === 0) {
-      return res.status(404).json({ message: "Felhasználó nem található" });
+      return res.status(404).json( "Felhasználó nem található" );
     }
 
     const existingHashedPassword = users[0].password;
@@ -143,7 +146,7 @@ export const changePassword = async (req: any, res: Response) => {
     const isMatch = await bcrypt.compare(oldPassword, existingHashedPassword);
 
     if (!isMatch) {
-      return res.status(401).json({ message: "A régi jelszó hibás" });
+      return res.status(401).json( "A régi jelszó hibás" );
     }
 
 
@@ -159,7 +162,38 @@ export const changePassword = async (req: any, res: Response) => {
 
   } catch (err) {
     console.error("Password change error:", err);
-    return res.status(500).json({ message: "Szerver hiba" });
+    return res.status(500).json( "Szerver hiba" );
+  } finally {
+    await connection.end();
+  }
+};
+
+
+export const getUserById = async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+
+  if (isNaN(userId)) {
+    return res.status(400).json( "Hibás user ID" );
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [rows] = await connection.query(
+      `SELECT user_id, email, name AS full_name, role, isActive, registration_date AS createdAt, last_login AS lastLogin
+       FROM Users
+       WHERE user_id = ?`,
+      [userId]
+    ) as any[];
+
+    if (rows.length === 0) {
+      return res.status(404).json(  "Felhasználó nem található" );
+    }
+
+    return res.status(200).json(rows[0]);
+  } catch (err) {
+    console.error( err);
+    return res.status(500).json(  "Szerver hiba" );
   } finally {
     await connection.end();
   }
