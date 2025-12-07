@@ -180,7 +180,7 @@ export const getUserById = async (req: Request, res: Response) => {
 
   try {
     const [rows] = await connection.query(
-      `SELECT user_id, email, name AS full_name, role, isActive, registration_date AS createdAt, last_login AS lastLogin
+      `SELECT user_id, email, name AS full_name, role, registration_date AS createdAt, last_login AS lastLogin
        FROM Users
        WHERE user_id = ?`,
       [userId]
@@ -194,6 +194,44 @@ export const getUserById = async (req: Request, res: Response) => {
   } catch (err) {
     console.error( err);
     return res.status(500).json(  "Szerver hiba" );
+  } finally {
+    await connection.end();
+  }
+};
+
+export const updateUser = async (req: any, res: Response) => {
+  const userId = parseInt(req.params.id);
+  const { full_name, email } = req.body;
+
+  if (isNaN(userId)) return res.status(400).json({ message: "Hibás user ID" });
+
+  const fieldsToUpdate: any = {};
+  if (full_name) fieldsToUpdate.name = full_name;
+  if (email) fieldsToUpdate.email = email;
+
+  if (Object.keys(fieldsToUpdate).length === 0) {
+    return res.status(400).json({ message: "Nincs frissítendő mező" });
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const keys = Object.keys(fieldsToUpdate);
+    const values = keys.map(key => fieldsToUpdate[key]);
+    values.push(userId); 
+
+    const sql = `UPDATE Users SET ${keys.map(k => `${k} = ?`).join(", ")} WHERE user_id = ?`;
+
+    const [result] = await connection.query(sql, values) as any;
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json( "Felhasználó nem található" );
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json("Szerver hiba" );
   } finally {
     await connection.end();
   }
