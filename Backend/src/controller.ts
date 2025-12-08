@@ -16,8 +16,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
   try {
     const [existing] = await connection.query(
-      "SELECT user_id FROM Users WHERE email = ?",
-      [email]
+      "SELECT user_id FROM Users WHERE email = ?", [email]
     );
 
     if ((existing as any[]).length > 0) {
@@ -30,9 +29,7 @@ export const registerUser = async (req: Request, res: Response) => {
     const now = new Date();
 
     const [result] = await connection.query(
-      `INSERT INTO Users (name, email, password, registration_date, role)
-       VALUES (?, ?, ?, ?, ?)`,
-      [full_name, email, hashedPassword, now, userRole]
+      `INSERT INTO Users (name, email, password, registration_date, role) VALUES (?, ?, ?, ?, ?)`,[full_name, email, hashedPassword, now, userRole]
     );
 
     const user_id = (result as any).insertId;
@@ -130,8 +127,7 @@ export const changePassword = async (req: any, res: Response) => {
   try {
 
     const [rows] = await connection.query(
-      "SELECT password FROM Users WHERE user_id = ?",
-      [userId]
+      "SELECT password FROM Users WHERE user_id = ?",[userId]
     );
 
     const users = rows as any[];
@@ -154,14 +150,13 @@ export const changePassword = async (req: any, res: Response) => {
 
 
     await connection.query(
-      "UPDATE Users SET password = ? WHERE user_id = ?",
-      [newHashedPassword, userId]
+      "UPDATE Users SET password = ? WHERE user_id = ?", [newHashedPassword, userId]
     );
 
     return res.status(200).json({ success: true });
 
   } catch (err) {
-    console.error("Password change error:", err);
+    console.error( err);
     return res.status(500).json( "Szerver hiba" );
   } finally {
     await connection.end();
@@ -180,10 +175,7 @@ export const getUserById = async (req: Request, res: Response) => {
 
   try {
     const [rows] = await connection.query(
-      `SELECT user_id, email, name AS full_name, role, registration_date AS createdAt, last_login AS lastLogin
-       FROM Users
-       WHERE user_id = ?`,
-      [userId]
+      `SELECT user_id, email, name AS full_name, role, registration_date AS createdAt, last_login AS lastLogin FROM Users WHERE user_id = ?`,[userId]
     ) as any[];
 
     if (rows.length === 0) {
@@ -231,6 +223,34 @@ export const updateUser = async (req: any, res: Response) => {
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error(err);
+    return res.status(500).json("Szerver hiba" );
+  } finally {
+    await connection.end();
+  }
+};
+
+export const deleteUser = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ message: "Hiányzó felhasználó ID!" });
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [result]: any = await connection.execute(
+      "DELETE FROM Users WHERE user_id = ?",[id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json( "Felhasználó nem található!" );
+    }
+
+    return res.status(200).json({ success: true });
+
+  } catch (err) {
+    console.error("Delete error:", err);
     return res.status(500).json("Szerver hiba" );
   } finally {
     await connection.end();
