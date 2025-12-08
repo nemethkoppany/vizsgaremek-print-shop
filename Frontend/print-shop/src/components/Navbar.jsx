@@ -4,14 +4,19 @@ export default function Navbar({page, setPage}) {
       <div className="logo">Fénymásoló Webshop</div>
 
       <ul className="nav-links">
-        <li>Bejelentkezés</li>
+        {page !== "home" && (
+          <li><button onClick={() => setPage("home")}>Főoldal</button></li>
+        )}
+
+        {page !== "arlista" && (
+          <li><button onClick={() => setPage("arlista")}>Árlista</button></li>
+        )}
+
+        {page !== "login" && (
+          <li><button onClick={() => setPage("login")}>Bejelentkezés</button></li>
+        )}
+
         <li>Szolgáltatások</li>
-        <li>
-          {page === "home" ? (<button onClick={() => setPage("arlista")}>Árlista</button>) : (
-            <button onClick={() => setPage("home")}>Főoldal</button>
-          )}
-          
-        </li>
       </ul>
 
       <div className="profile-icon"></div>
