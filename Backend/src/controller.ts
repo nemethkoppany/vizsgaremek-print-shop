@@ -3,7 +3,7 @@ import mysql from "mysql2/promise";
 import config from "./config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { AuthRequest,User, UserResponse } from "./interface";
+import { AuthRequest,Product,User, UserResponse } from "./interface";
 
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
@@ -248,5 +248,30 @@ export const deleteUser = async (req: Request, res: Response) => {
     return res.status(500).json("Szerver hiba" );
   } finally {
     await connection.end();
+  }
+};
+
+
+export const getProducts = async (req: Request, res: Response) => {
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [rows] = await connection.query(
+      "SELECT product_id, name, description, base_price, in_stock, image_urls FROM Products"
+    );
+
+    const products: Product[] = (rows as any[]).map(p => ({
+      product_id: p.product_id,
+      name: p.name,
+      description: p.description,
+      base_price: p.base_price,
+      in_stock: p.in_stock,
+      image_urls: p.image_urls ? JSON.parse(p.image_urls) : []
+    }));
+
+    return res.status(200).json(products);
+  } catch (err) {
+    console.error("Get products error: ", err);
+    return res.status(500).json("Szerver hiba");
   }
 };

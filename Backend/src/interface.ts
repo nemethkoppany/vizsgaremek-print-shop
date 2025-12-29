@@ -38,10 +38,11 @@ export interface Product {
   product_id: number;
   name: string;
   description: string;
-  price: number;
-  stock_quantity: number;
+  base_price: number;   
+  in_stock: number;
   image_urls?: string[];
 }
+
 
 export interface FileData {
   file_id: number;

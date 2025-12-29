@@ -49,8 +49,15 @@ CREATE TABLE Order_items (
 
 CREATE TABLE Products (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(200),
     description VARCHAR(200),
     base_price INT,
     category VARCHAR(20),
-    in_stock BOOLEAN
+    in_stock BOOLEAN,
+    image_urls VARCHAR(500)  -- megnöveltem, mert JSON lehet hosszabb
 );
+
+INSERT INTO Products (name, description, base_price, category, in_stock, image_urls) VALUES
+('A3 poszter', 'Színes A3 méretű nyomtatott poszter', 1990, "papír", true, '["https://example.com/poster-a3.jpg"]'),
+('Névjegykártya', 'Prémium papírra nyomtatott névjegykártya', 4990, "papír", false, '["https://example.com/business-card.jpg"]'),
+('Szórólap', 'A5 méretű reklám szórólap', 2990, "papír", false, '["https://example.com/flyer.jpg"]');
