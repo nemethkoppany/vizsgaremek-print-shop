@@ -4,6 +4,7 @@ import config from "./config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { AuthRequest,Product,User, UserResponse } from "./interface";
+import { parse } from "dotenv";
 
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
@@ -275,3 +276,38 @@ export const getProducts = async (req: Request, res: Response) => {
     return res.status(500).json("Szerver hiba");
   }
 };
+
+export const getProductById = async (req:Request, res: Response) =>{
+  const productId = parseInt(req.params.id);
+  
+  if(isNaN(productId)){
+    return res.status(400).json("Hibás product ID");
+  }
+
+  const connection = await mysql.createConnection(config.database);
+  
+  try{
+    const [rows] = await connection.query(
+      "SELECT product_id, name, description, base_price, in_stock, image_urls FROM Products WHERE product_id = ? ",[productId]
+    )
+    const products = rows as any[];
+
+    if(products.length === 0){
+      return res.status(404).json("Termék nem található!");
+    }
+
+    const product: Product = {
+      product_id: products[0].product_id,
+      name: products[0].name,
+      description: products[0].description,
+      base_price: products[0].base_price,
+      in_stock: products[0].in_stock,
+      image_urls: products[0].image_urls ? JSON.parse(products[0].image_urls) : []
+    }
+    return res.status(200).json(product);
+  }
+  catch (err){
+    console.error("Get product by ID error",err)
+    return res.status(500).json("Szerver hiba");
+  }
+}
