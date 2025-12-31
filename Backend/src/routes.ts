@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById} from "./controller";
-import authenticateToken from "./authMiddleware";
+import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct} from "./controller";
+import authenticateToken, { checkAdmin } from "./authMiddleware";
 
 const router = Router();
 
@@ -12,5 +12,6 @@ router.put("/api/users/:id", authenticateToken, updateUser);
 router.delete("/api/users/:id", deleteUser);
 router.get("/api/products", getProducts);
 router.get("/api/products/:id",getProductById);
+router.post("/api/admin/products",authenticateToken,checkAdmin,createProduct)
 
 export default router;

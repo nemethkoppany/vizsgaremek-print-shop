@@ -29,3 +29,15 @@ const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
 };
 
 export default verifyToken;
+
+
+export function checkAdmin(req:AuthRequest, res:Response, next:NextFunction){
+  if(!req.user){
+    return res.status(401).json("Nincs bejelentkezve!");
+  }
+
+  if(req.user.role !== "admin"){
+    return res.status(403).json("Admin jogosultság szükséges");
+  }
+  next();
+}

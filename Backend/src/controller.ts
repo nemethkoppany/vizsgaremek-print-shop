@@ -311,3 +311,26 @@ export const getProductById = async (req:Request, res: Response) =>{
     return res.status(500).json("Szerver hiba");
   }
 }
+
+export const createProduct = async (req:AuthRequest, res:Response) =>{
+  const {name, description, base_price,in_stock, image_urls} = req.body;
+
+  if(!name || !description || base_price == null  || in_stock == null ){
+    return res.status(400).json("Hiányzó adatok");
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try{
+    await connection.query(
+      "INSERT INTO Products (name, description, base_price, in_stock, image_urls) VALUES (?,?,?,?,?)",[name,description,base_price,in_stock,image_urls ? JSON.stringify(image_urls) : null]
+    )
+
+    return res.status(201).json({success:true});
+  }
+  catch(err){
+    console.error(err);
+    return res.status(500).json("Szerver hiba");
+  }
+
+}
