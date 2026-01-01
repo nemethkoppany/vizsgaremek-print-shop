@@ -334,3 +334,46 @@ export const createProduct = async (req:AuthRequest, res:Response) =>{
   }
 
 }
+
+export const updateProduct = async (req:Request, res:Response) =>{
+  const productId = parseInt(req.params.id);
+  const {name, description, base_price, in_stock, image_urls} = req.body;
+
+  if(isNaN(productId)){
+    return res.status(400).json("Hibás product ID");
+  }
+
+  const fields: any = {};
+    if (name !== undefined) fields.name = name;
+  if (description !== undefined) fields.description = description;
+  if (base_price !== undefined) fields.base_price = base_price;
+  if (in_stock !== undefined) fields.in_stock = in_stock;
+  if (image_urls !== undefined) fields.image_urls = JSON.stringify(image_urls);
+
+  if(Object.keys(fields).length === 0){
+    return res.status(400).json("nincs frissítendő adat");
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try{
+    const keys = Object.keys(fields);
+    const values = Object.values(fields);
+
+    const sql = `UPDATE Products SET ${keys.map(k => `${k} =?`).join(', ')} WHERE product_id = ?`;
+
+    values.push(productId);
+
+    const [result]: any = await connection.query(sql, values);
+
+    if(result.affectedRows === 0){
+      return res.status(404).json("A termék nem található");
+    }
+
+    return res.status(200).json({success: true});
+  }
+  catch(err){
+    console.error(err);
+    return res.status(500).json("Szerver hiba");
+  }
+}

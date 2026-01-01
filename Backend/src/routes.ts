@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct} from "./controller";
+import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct} from "./controller";
 import authenticateToken, { checkAdmin } from "./authMiddleware";
 
 const router = Router();
@@ -7,11 +7,14 @@ const router = Router();
 router.post("/api/auth/register", registerUser);
 router.post("/api/auth/login",loginUser);
 router.put("/api/auth/password-change",authenticateToken,changePassword);
+
 router.get("/api/users/:id", authenticateToken, getUserById);
 router.put("/api/users/:id", authenticateToken, updateUser);
 router.delete("/api/users/:id", deleteUser);
+
 router.get("/api/products", getProducts);
 router.get("/api/products/:id",getProductById);
-router.post("/api/admin/products",authenticateToken,checkAdmin,createProduct)
+router.post("/api/admin/products",authenticateToken,checkAdmin,createProduct);
+router.put("/api/admin/products/:id",authenticateToken,checkAdmin,updateProduct);
 
 export default router;
