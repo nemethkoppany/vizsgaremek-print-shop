@@ -114,3 +114,7 @@ CREATE TABLE Users
                         UPDATE Users
 SET role = 'admin'
 WHERE email = 'admin@admin.hu';
+
+
+ALTER TABLE Users
+ADD last_login DATETIME NULL;

@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct} from "./controller";
+import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct,deleteProduct, getOrderAnalytics, getLoginAnalytics} from "./controller";
 import authenticateToken, { checkAdmin } from "./authMiddleware";
+import verifyToken from "./authMiddleware";
 
 const router = Router();
 
@@ -16,5 +17,10 @@ router.get("/api/products", getProducts);
 router.get("/api/products/:id",getProductById);
 router.post("/api/admin/products",authenticateToken,checkAdmin,createProduct);
 router.put("/api/admin/products/:id",authenticateToken,checkAdmin,updateProduct);
+router.delete("/api/admin/products/:id", authenticateToken, checkAdmin, deleteProduct);
+
+
+router.get("/api/admin/analytics/orders",authenticateToken,checkAdmin,getOrderAnalytics);
+router.get("/api/admin/analytics/logins/:id",verifyToken,checkAdmin,getLoginAnalytics);
 
 export default router;

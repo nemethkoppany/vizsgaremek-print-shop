@@ -29,7 +29,6 @@ export interface UserResponse {
   email: string;
   full_name: string;
   role: string;
-  isActive: boolean;
   createdAt: Date;
   lastLogin: Date | null;
 }
@@ -39,7 +38,7 @@ export interface Product {
   name: string;
   description: string;
   base_price: number;   
-  in_stock: number;
+  in_stock: boolean;
   image_urls?: string[];
 }
 
