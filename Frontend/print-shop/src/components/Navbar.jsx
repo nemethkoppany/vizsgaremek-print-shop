@@ -19,7 +19,7 @@ export default function Navbar({page, setPage}) {
         <li>Szolgáltatások</li>
       </ul>
 
-      <div className="profile-icon"></div>
+      <div className="profile-icon" onClick={() => setPage("profile")} role="button" />
     </nav>
   );
 }

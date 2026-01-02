@@ -278,3 +278,105 @@ hr {
   border: 2px solid #ef4444;
   color: #f87171;
 }
+
+.profile-page{
+  display:flex;
+  justify-content:center;
+  margin-top:40px;
+}
+
+.profile-card{
+  width:min(700px, 100%);
+  background:#1e293b;
+  border-radius:18px;
+  box-shadow:0 5px 25px rgba(0,0,0,.4);
+  padding:35px 35px;
+}
+
+.profile-top{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:16px;
+  padding-bottom:25px;
+  border-bottom:1px solid #334155;
+}
+
+.profile-avatar{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  object-fit:cover;
+  border:3px solid #38bdf8;
+  background:#0f172a;
+}
+
+.profile-btn{
+  width: min(360px, 100%);
+  margin-top:0;
+}
+
+.profile-section{
+  margin-top:28px;
+  text-align:left;
+}
+
+.profile-section h2{
+  color:#38bdf8;
+  margin:0 0 18px;
+  font-size:1.35rem;
+}
+
+.profile-form{
+  margin-top:8px;
+}
+
+.orders-summary{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+  color:#e2e8f0;
+}
+
+.orders-list{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.order-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+  padding:14px 14px;
+  border:2px solid #334155;
+  border-radius:12px;
+  background:#0f172a;
+}
+
+.order-id{
+  font-weight:800;
+  color:#fff;
+  margin-bottom:6px;
+}
+
+.order-desc{
+  color:#cbd5e1;
+}
+
+.order-price{
+  font-weight:800;
+  white-space:nowrap;
+  color:#4ade80;
+  align-self: center;
+}
+
+.profile-icon{
+  cursor:pointer;
+}
