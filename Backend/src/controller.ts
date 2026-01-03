@@ -10,7 +10,7 @@ import {
   User,
   UserResponse,
 } from "./interface";
-import { parse } from "dotenv";
+import { uploadMiddleware, uploadMiddlewareMultiple } from "./uploadMiddleware";
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
 export const registerUser = async (req: Request, res: Response) => {
@@ -473,3 +473,119 @@ export const getLoginAnalytics = async (req:Request, res:Response) =>{
       return res.status(500).json("Szerver hiba");
     }
 }
+
+export const uploadFile = async (req: AuthRequest, res: Response) => {
+  try {
+    await uploadMiddleware(req, res);
+
+    if (!req.file) return res.status(400).json({ error: "Nem lett fájl feltöltve!" });
+
+    const { originalname, mimetype, size, filename } = req.file;
+    const connection = await mysql.createConnection(config.database);
+
+    const [result]: any = await connection.query(
+      `INSERT INTO Files (user_id, file_name, file_type, file_size, status) VALUES (?, ?, ?, ?, ?)`,[req.user!.user_id, filename, mimetype, size, "uploaded"]
+    );
+
+    await connection.end();
+
+    return res.status(201).json({
+      file_id: result.insertId,
+      original_name: originalname,
+      url: `/uploads/${filename}`,
+      mime_type: mimetype,
+      size_bytes: size,
+    });
+  } catch (err) {
+    console.error("File upload error:", err);
+    return res.status(500).json({ error: "Fájl feltöltési hiba" });
+  }
+};
+
+export const uploadFilesMultiple = async (req: AuthRequest, res: Response) => {
+  try {
+    await uploadMiddlewareMultiple(req, res);
+
+    if (!req.files || !Array.isArray(req.files) || req.files.length === 0)
+      return res.status(400).json({ error: "Nem lett fájl feltöltve!" });
+
+    const connection = await mysql.createConnection(config.database);
+    const savedFiles: any[] = [];
+
+    for (const file of req.files as Express.Multer.File[]) {
+      const { originalname, mimetype, size, filename } = file;
+
+      const [result]: any = await connection.query(
+        `INSERT INTO Files (user_id, file_name, file_type, file_size, status) VALUES (?, ?, ?, ?, ?)`,[req.user!.user_id, filename, mimetype, size, "uploaded"]
+      );
+
+      savedFiles.push({
+        file_id: result.insertId,
+        original_name: originalname,
+        url: `/uploads/${filename}`,
+        mime_type: mimetype,
+        size_bytes: size,
+      });
+    }
+
+    await connection.end();
+
+    return res.status(201).json({ message: "Fájlok feltöltve", savedFiles });
+  } catch (err) {
+    console.error("Multiple file upload error:", err);
+    return res.status(500).json({ error: "Fájlok feltöltési hiba" });
+  }
+};
+
+
+export const createOrder = async (req: AuthRequest, res: Response) => {
+  const { items } = req.body; 
+
+  if (!items || !Array.isArray(items) || items.length === 0)
+    return res.status(400).json({ error: "Nincsenek termékek a rendeléshez!" });
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [orderResult]: any = await connection.query(
+      `INSERT INTO Orders (user_id, order_date, status, total_price, payment_status) VALUES (?, NOW(), ?, ?, ?)`,[req.user!.user_id, "pending", 0, "pending"]
+    );
+
+    const orderId = orderResult.insertId;
+    let totalPrice = 0;
+
+    for (const item of items) {
+      const [productRows]: any = await connection.query(
+        "SELECT name, base_price, in_stock FROM Products WHERE product_id = ?",[item.productId]
+      );
+
+      if (!productRows.length)
+        throw new Error(`A termék nem található: id: ${item.productId}`);
+
+      const product = productRows[0];
+
+      if (!productRows[0].in_stock)
+        throw new Error(`Az alábbi termék nincs raktáron: ${product.name}`);
+
+      const price = productRows[0].base_price * item.quantity;
+      totalPrice += price;
+
+      const [orderItemResult]: any = await connection.query(
+        `INSERT INTO Order_items (order_id, product_id, quantity, subtotal) VALUES (?, ?, ?, ?)`,[orderId, item.productId, item.quantity, price]
+      );
+
+      if (item.fileId) {
+        await connection.query(
+          `INSERT INTO Tetel_fajlok (order_item_id, file_id) VALUES (?, ?)`,[orderItemResult.insertId, item.fileId]
+        );
+      }
+    }
+
+    await connection.query("UPDATE Orders SET total_price = ? WHERE order_id = ?", [totalPrice, orderId]);
+
+    return res.status(201).json({ order_id: orderId, status: "pending", total_price: totalPrice });
+  } catch (err: any) {
+    console.error("Create order error:", err);
+    return res.status(500).json({ error: err.message || "Sikertelen rendelés" });
+  }
+};
