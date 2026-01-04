@@ -12,6 +12,8 @@ import {
 } from "./interface";
 import { uploadMiddleware, uploadMiddlewareMultiple } from "./uploadMiddleware";
 import { domainToASCII } from "url";
+import { stat } from "fs";
+import { types } from "util";
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
 export const registerUser = async (req: Request, res: Response) => {
@@ -538,6 +540,54 @@ export const uploadFilesMultiple = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const downloadFile = async (req: any, res: any) => {
+  const fileId = req.params.id;
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [rows]: any = await connection.query(
+      "SELECT file_name FROM Files WHERE file_id = ?",[fileId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json("A fájl nem található!");
+    }
+
+    const fileName = rows[0].file_name;
+    const filePath = config.baseDir + config.uploadDir + fileName;
+
+    return res.download(filePath, fileName);
+  } catch (err) {
+    console.error("Download error:", err);
+    return res.status(500).json({ error: "A fájl nem tölthető le!" });
+  }
+};
+
+//Ez egyenlőre csak az adatbázisból törli az feltöltött fájlokat, az uploads mappból nem
+export const deleteFile = async (req: Request, res: Response) => {
+  const fileId = req.params.id;
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [results]: any = await connection.query(
+      "SELECT file_name FROM Files WHERE file_id = ?",[fileId]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "A fájl nem található!" });
+    }
+
+    await connection.query("DELETE FROM Tetel_fajlok WHERE file_id = ?", [fileId]);
+    await connection.query("DELETE FROM Files WHERE file_id = ?", [fileId]);
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json( "Szerver hiba");
+  }
+};
+
 
 export const createOrder = async (req: AuthRequest, res: Response) => {
   const { items } = req.body; 
@@ -591,51 +641,72 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
   }
 };
 
-
-export const downloadFile = async (req: any, res: any) => {
-  const fileId = req.params.id;
-  const connection = await mysql.createConnection(config.database);
-
-  try {
-    const [rows]: any = await connection.query(
-      "SELECT file_name FROM Files WHERE file_id = ?",[fileId]
-    );
-
-    if (!rows.length) {
-      return res.status(404).json("A fájl nem található!");
-    }
-
-    const fileName = rows[0].file_name;
-    const filePath = config.baseDir + config.uploadDir + fileName;
-
-    return res.download(filePath, fileName);
-  } catch (err) {
-    console.error("Download error:", err);
-    return res.status(500).json({ error: "A fájl nem tölthető le!" });
-  }
-};
-
-//Ez egyenlőre csak az adatbázisból törli az feltöltött fájlokat, az uploads mappból nem
-export const deleteFile = async (req: Request, res: Response) => {
-  const fileId = req.params.id;
+export const getOrder = async (req: Request, res: Response) =>{
+  const orderId = req.params.id;
 
   const connection = await mysql.createConnection(config.database);
 
-  try {
-    const [results]: any = await connection.query(
-      "SELECT file_name FROM Files WHERE file_id = ?",[fileId]
+  try{
+    const [orders]: any = await connection.query(
+      "SELECT order_id, status, total_price FROM Orders WHERE order_id = ?",[orderId]
     );
-
-    if (results.length === 0) {
-      return res.status(404).json({ error: "A fájl nem található!" });
+    if(orders.length === 0){
+      return res.status(404).json("Rendelés nem található");
     }
 
-    await connection.query("DELETE FROM Tetel_fajlok WHERE file_id = ?", [fileId]);
-    await connection.query("DELETE FROM Files WHERE file_id = ?", [fileId]);
+    const order = orders[0];
 
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json( "Szerver hiba");
+    const [items]: any = await connection.query(
+      "SELECT oi.product_id, p.name as product_name, oi.quantity, oi.subtotal FROM Order_items oi JOIN Products p ON oi.product_id = p.product_id WHERE oi.order_id = ?",[orderId]
+    );
+
+     const response = {
+      order_id: order.order_id,
+      status: order.status,
+      total_price: order.total_price,
+      items: items.map((item: any) => ({
+        product_id: item.product_id,
+        name: item.product_name,
+        quantity: item.quantity,
+        subtotal: item.subtotal
+      }))
+    };
+
+    return res.status(200).json(response);
   }
-};
+  catch(err){
+    console.error("Get order error",err);
+    return res.status(500).json("Hiba a rendelés lekérdezésekor");
+  }
+}
+
+export const updateOrderStatus = async (req:AuthRequest, res: Response) => {
+  const orderId = parseInt(req.params.id);
+  const {status} = req.body;
+
+  if(isNaN(orderId)){
+    return res.status(400).json("Hibás rendelés id");
+  }
+
+  if(!status || typeof status !== "string"){
+    return res.status(400).json("Hiányzó vagy érvénytelen status");
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try{
+    const [result]: any = await connection.query(
+      "UPDATE Orders SET status = ? WHERE order_id = ?",[status, orderId]
+    );
+
+    if(result.affectedRows === 0){
+      return res.status(404).json("A rendelés nem talákható");
+    }
+
+    return res.status(200).json({success:true});
+  }
+  catch(err){
+    console.error("Update order status error:", err);
+    return res.status(500).json("Szerver hiba");
+  }
+}

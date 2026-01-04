@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct,deleteProduct, getOrderAnalytics, getLoginAnalytics, uploadFile, uploadFilesMultiple, createOrder, downloadFile, deleteFile} from "./controller";
+import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct,deleteProduct, getOrderAnalytics, getLoginAnalytics, uploadFile, uploadFilesMultiple, createOrder, downloadFile, deleteFile, getOrder, updateOrderStatus} from "./controller";
 import authenticateToken, { checkAdmin } from "./authMiddleware";
 import verifyToken from "./authMiddleware";
 
@@ -29,5 +29,7 @@ router.get("/api/file/:id",verifyToken,downloadFile);
 router.delete("/api/file/:id",verifyToken,deleteFile);
 
 router.post("/api/order", authenticateToken, createOrder);
+router.get("/api/order/:id", getOrder);
+router.put("/api/admin/order/:id",authenticateToken,checkAdmin,updateOrderStatus);
 
 export default router;
