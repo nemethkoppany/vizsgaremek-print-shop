@@ -11,6 +11,7 @@ import {
   UserResponse,
 } from "./interface";
 import { uploadMiddleware, uploadMiddlewareMultiple } from "./uploadMiddleware";
+import { domainToASCII } from "url";
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
 export const registerUser = async (req: Request, res: Response) => {
@@ -587,5 +588,29 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
   } catch (err: any) {
     console.error("Create order error:", err);
     return res.status(500).json({ error: err.message || "Sikertelen rendelés" });
+  }
+};
+
+
+export const downloadFile = async (req: any, res: any) => {
+  const fileId = req.params.id;
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [rows]: any = await connection.query(
+      "SELECT file_name FROM Files WHERE file_id = ?",[fileId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json("A fájl nem található!");
+    }
+
+    const fileName = rows[0].file_name;
+    const filePath = config.baseDir + config.uploadDir + fileName;
+
+    return res.download(filePath, fileName);
+  } catch (err) {
+    console.error("Download error:", err);
+    return res.status(500).json({ error: "A fájl nem tölthető le!" });
   }
 };

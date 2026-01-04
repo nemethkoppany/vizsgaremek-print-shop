@@ -125,3 +125,6 @@ WHERE email = 'admin@admin.hu';
 
                         ALTER TABLE Users
 ADD last_login DATETIME NULL;
+
+
+SHOW TABLES

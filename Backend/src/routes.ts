@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct,deleteProduct, getOrderAnalytics, getLoginAnalytics, uploadFile, uploadFilesMultiple, createOrder} from "./controller";
+import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct,deleteProduct, getOrderAnalytics, getLoginAnalytics, uploadFile, uploadFilesMultiple, createOrder, downloadFile} from "./controller";
 import authenticateToken, { checkAdmin } from "./authMiddleware";
 import verifyToken from "./authMiddleware";
 
@@ -25,6 +25,7 @@ router.get("/api/admin/analytics/logins/:id",verifyToken,checkAdmin,getLoginAnal
 
 router.post("/api/file/upload", authenticateToken, uploadFile);
 router.post("/api/file/uploads", authenticateToken, uploadFilesMultiple);
+router.get("/api/file/:id",verifyToken,downloadFile)
 
 router.post("/api/order", authenticateToken, createOrder);
 
