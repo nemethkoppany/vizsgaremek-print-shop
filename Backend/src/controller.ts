@@ -614,3 +614,28 @@ export const downloadFile = async (req: any, res: any) => {
     return res.status(500).json({ error: "A fájl nem tölthető le!" });
   }
 };
+
+//Ez egyenlőre csak az adatbázisból törli az feltöltött fájlokat, az uploads mappból nem
+export const deleteFile = async (req: Request, res: Response) => {
+  const fileId = req.params.id;
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [results]: any = await connection.query(
+      "SELECT file_name FROM Files WHERE file_id = ?",[fileId]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "A fájl nem található!" });
+    }
+
+    await connection.query("DELETE FROM Tetel_fajlok WHERE file_id = ?", [fileId]);
+    await connection.query("DELETE FROM Files WHERE file_id = ?", [fileId]);
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json( "Szerver hiba");
+  }
+};
