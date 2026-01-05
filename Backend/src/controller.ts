@@ -11,9 +11,6 @@ import {
   UserResponse,
 } from "./interface";
 import { uploadMiddleware, uploadMiddlewareMultiple } from "./uploadMiddleware";
-import { domainToASCII } from "url";
-import { stat } from "fs";
-import { types } from "util";
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
 export const registerUser = async (req: Request, res: Response) => {
@@ -63,8 +60,6 @@ export const registerUser = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Register error:", err);
     return res.status(500).json("Szerver hiba");
-  } finally {
-    await connection.end();
   }
 };
 
@@ -193,8 +188,6 @@ export const getUserById = async (req: Request, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json("Szerver hiba");
-  } finally {
-    await connection.end();
   }
 };
 
@@ -233,8 +226,6 @@ export const updateUser = async (req: any, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json("Szerver hiba");
-  } finally {
-    await connection.end();
   }
 };
 
@@ -261,9 +252,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Delete error:", err);
     return res.status(500).json("Szerver hiba");
-  } finally {
-    await connection.end();
-  }
+  } 
 };
 
 export const getProducts = async (req: Request, res: Response) => {
