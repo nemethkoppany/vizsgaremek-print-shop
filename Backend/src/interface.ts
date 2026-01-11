@@ -73,8 +73,10 @@ export interface OrderStats {
 
 export interface AuditLog {
   log_id: number;
-  user_id?: number;
+  user_id: number;
   event_type: string;
   message: string;
   createdAt: Date;
 }
+
+
