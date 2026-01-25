@@ -784,3 +784,25 @@ export const getAuditLogs = async (req:AuthRequest, res: Response) =>{
     
    }
 }
+
+export const createRating = async (req: AuthRequest, res: Response) => {
+  const { rating, comment } = req.body;
+  const userId = req.user!.user_id;
+
+  if (!rating || typeof rating !== "number" || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: "Az értékelésnek 1 és 5 között kell lennie." });
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    await connection.query(
+      "INSERT INTO Ratings (user_id, rating, comment) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rating = VALUES(rating),comment = VALUES(comment)",[userId, rating, comment || null]
+    );
+
+    return res.status(201).json({ success: true });
+  } catch (err) {
+    console.error("Create rating error:", err);
+    return res.status(500).json({ error: "Nem sikerült menteni az értékelést." });
+  }
+};

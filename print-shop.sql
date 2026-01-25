@@ -105,21 +105,7 @@ CREATE TABLE Users
 
 
 
-                        --{
-                        -- "email": "admin@admin.hu",
-                        --"full_name": "Admin",
-                        --"password": "Admin"
-                        --}
-
-                        --"accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFkbWluQGFkbWluLmh1Iiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NjcxMzg4OTUsImV4cCI6MTc2NzE0MjQ5NX0.8TDmGbqONd6qAPTSZ6YmjkcpCT2162Sx0QYU3kuUI2M"
-
-
-                        --{
-                        -- "email": "teszt@user.hu",
-                        -- "full_name": "Teszt Felhasználó",
-                        --"password": "Teszt1234",
-                        --"role": "user"
-                        --}
+                  
                         UPDATE Users
 SET role = 'admin'
 WHERE email = 'admin@admin.hu';
@@ -153,3 +139,19 @@ CREATE TABLE Ratings (
 
   FOREIGN KEY (user_id) REFERENCES Users(user_id)
 );
+
+      --{
+                        -- "email": "admin@admin.hu",
+                        --"full_name": "Admin",
+                        --"password": "Admin"
+                        --}
+
+                        --"accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFkbWluQGFkbWluLmh1Iiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NjcxMzg4OTUsImV4cCI6MTc2NzE0MjQ5NX0.8TDmGbqONd6qAPTSZ6YmjkcpCT2162Sx0QYU3kuUI2M"
+
+
+                        --{
+                        -- "email": "teszt@user.hu",
+                        -- "full_name": "Teszt Felhasználó",
+                        --"password": "Teszt1234",
+                        --"role": "user"
+                        --}
