@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct,deleteProduct, getOrderAnalytics, getLoginAnalytics, uploadFile, uploadFilesMultiple, createOrder, downloadFile, deleteFile, getOrder, updateOrderStatus, getUserOrders, createSystemLog, getAuditLogs, createRating, getRatingAverage} from "./controller";
+import { registerUser,loginUser,changePassword, getUserById, updateUser, deleteUser, getProducts, getProductById,createProduct, updateProduct,deleteProduct, getOrderAnalytics, getLoginAnalytics, uploadFile, uploadFilesMultiple, createOrder, downloadFile, deleteFile, getOrder, updateOrderStatus, getUserOrders, createSystemLog, getAuditLogs, createRating, getRatingAverage, getAllratings} from "./controller";
 import authenticateToken, { checkAdmin } from "./authMiddleware";
 import verifyToken from "./authMiddleware";
 
@@ -39,4 +39,5 @@ router.get("/api/admin/logs/:id",verifyToken,checkAdmin,getAuditLogs);
 
 router.post("/api/ratings",verifyToken,createRating);
 router.get("/api/ratings/avg",getRatingAverage);
+router.get("/api/ratings/all",authenticateToken,getAllratings);
 export default router;

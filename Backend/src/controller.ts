@@ -826,3 +826,18 @@ export const getRatingAverage = async (req:any, res: Response) =>{
     return res.status(500).json("Nem sikerült lekérni az értékeléseket");
   }
 }
+
+export const getAllratings = async (req: Request, res: Response) =>{
+  const connection = await mysql.createConnection(config.database);
+
+  try{
+    const [rows]:any = await connection.query(
+      "SELECT r.rating_id, r.rating, r.comment, r.createdAt, u.user_id, u.name AS user_name FROM Ratings r JOIN Users u ON r.user_id = u.user_id ORDER BY r.createdAt DESC"
+    );
+    return res.status(200).json(rows);
+  }
+  catch(err){
+    console.error("Get ratings error: ",err);
+    return res.status(500).json("Szerver hiba");
+  }
+}
