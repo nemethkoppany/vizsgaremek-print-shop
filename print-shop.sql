@@ -1,3 +1,5 @@
+USE print_shop;
+
 CREATE TABLE Users
 (
     user_id INT
@@ -128,3 +130,26 @@ ADD last_login DATETIME NULL;
 
 
 SHOW TABLES
+
+CREATE TABLE Audit_logs (
+  log_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NULL,
+  event_type VARCHAR(100) NOT NULL,
+  message TEXT NOT NULL,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
+
+update `Audit_logs`
+user_id INT NOT NULL;
+
+
+CREATE TABLE Ratings (
+  rating_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL UNIQUE,
+  rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment VARCHAR(255) NULL,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
