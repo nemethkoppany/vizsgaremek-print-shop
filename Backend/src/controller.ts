@@ -13,6 +13,7 @@ import {
 import { uploadMiddleware, uploadMiddlewareMultiple } from "./uploadMiddleware";
 import { constrainedMemory } from "process";
 import { stat } from "fs";
+import { count } from "console";
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
 export const registerUser = async (req: Request, res: Response) => {
@@ -806,3 +807,22 @@ export const createRating = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: "Nem sikerült menteni az értékelést." });
   }
 };
+
+
+export const getRatingAverage = async (req:any, res: Response) =>{
+  const connection = await mysql.createConnection(config.database);
+
+  try{
+    const [rows]: any = await connection.query(
+      "SELECT COUNT(*) AS total_ratings, ROUND(AVG(RATING),1) AS average_rating FROM Ratings"
+    );
+
+    return res.status(200).json({
+      total_ratings: rows[0].total_ratings,
+      average_rating:rows[0].average_rating || 0
+    });
+  }catch(err){
+    console.error("GET average rating error: ",err);
+    return res.status(500).json("Nem sikerült lekérni az értékeléseket");
+  }
+}
