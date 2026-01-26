@@ -19,7 +19,7 @@ export default function App() {
     <div className="container">
       <Navbar page={page} setPage={setPage} cartCount={cartItems.length} />
 
-      {page === "home" && <Fooldal />}
+      {page === "home" && <Fooldal setPage={setPage}/>}
       {page === "arlista" && <Arlista setPage={setPage} />}
       {page === "services" && (
         <Services

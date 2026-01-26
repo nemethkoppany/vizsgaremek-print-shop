@@ -55,8 +55,7 @@ function CalendarPreview({ images }) {
                   {cells.map((d, i) => (
                     <div
                       key={i}
-                      className={`calpage-day ${d ? "" : "empty"} ${d && i % 7 === 6 ? "sun" : ""}`}
-                    >
+                      className={`calpage-day ${d ? "" : "empty"} ${d && i % 7 === 6 ? "sun" : ""}`}>
                       {d || ""}
                     </div>
                   ))}
