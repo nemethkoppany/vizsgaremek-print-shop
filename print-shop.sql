@@ -155,3 +155,9 @@ CREATE TABLE Ratings (
                         --"password": "Teszt1234",
                         --"role": "user"
                         --}
+
+                        ALTER TABLE Users
+ADD profile_image VARCHAR(255) DEFAULT 'default.png';
+
+
+SELECT user_id, email, profile_image FROM Users;

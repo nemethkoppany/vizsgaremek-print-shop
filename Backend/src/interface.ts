@@ -5,11 +5,13 @@ export interface User {
   user_id: number;
   name: string;
   email: string;
-  password: string; 
+  password: string;
   role: string;
   registration_date: Date;
   last_login?: Date | null;
+  profile_image?: string;
 }
+
 
 //JWTPayload interface
 export interface JwtPayload {
@@ -31,7 +33,9 @@ export interface UserResponse {
   role: string;
   createdAt: Date;
   lastLogin: Date | null;
+  profile_image: string;
 }
+
 
 export interface Product {
   product_id: number;

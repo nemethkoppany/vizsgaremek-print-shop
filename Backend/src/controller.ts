@@ -11,41 +11,39 @@ import {
   UserResponse,
 } from "./interface";
 import { uploadMiddleware, uploadMiddlewareMultiple } from "./uploadMiddleware";
-import { constrainedMemory } from "process";
-import { stat } from "fs";
-import { count } from "console";
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
-export const registerUser = async (req: Request, res: Response) => {
-  const { email, full_name, password, role } = req.body;
-
-  if (!email || !full_name || !password) {
-    return res.status(400).json("Hiányzó adatok");
-  }
-
-  const connection = await mysql.createConnection(config.database);
-
+export const registerUser = async (req: AuthRequest, res: Response) => {
   try {
-    const [existing] = await connection.query(
-      "SELECT user_id FROM Users WHERE email = ?",
-      [email]
+    await uploadMiddleware(req, res);
+
+    const { email, full_name, password, role } = req.body;
+
+    if (!email || !full_name || !password) {
+      return res.status(400).json("Hiányzó adatok");
+    }
+
+    const connection = await mysql.createConnection(config.database);
+
+    const [existing]: any = await connection.query(
+      "SELECT user_id FROM Users WHERE email = ?",[email]
     );
 
-    if ((existing as any[]).length > 0) {
+    if (existing.length > 0) {
       return res.status(409).json("Ez az email már foglalt.");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const userRole = role && typeof role === "string" ? role : "user";
-    const now = new Date();
 
-    const [result] = await connection.query(
-      `INSERT INTO Users (name, email, password, registration_date, role) VALUES (?, ?, ?, ?, ?)`,
-      [full_name, email, hashedPassword, now, userRole]
+    const profileImage = req.file ? req.file.filename : "default.png";
+
+    const [result]: any = await connection.query(
+      `INSERT INTO Users (name, email, password, registration_date, role, profile_image) 
+       VALUES (?, ?, ?, NOW(), ?, ?)`,[full_name, email, hashedPassword, userRole, profileImage]
     );
 
-    const user_id = (result as any).insertId;
+    const user_id = result.insertId;
 
     const accessToken = jwt.sign(
       { user_id, email, role: userRole },
@@ -58,6 +56,7 @@ export const registerUser = async (req: Request, res: Response) => {
       email,
       full_name,
       role: userRole,
+      profile_image: profileImage,
       accessToken,
     });
   } catch (err) {
@@ -65,6 +64,7 @@ export const registerUser = async (req: Request, res: Response) => {
     return res.status(500).json("Szerver hiba");
   }
 };
+
 
 export const loginUser = async (req: Request, res: Response) => {
   const { email, password } = req.body;
