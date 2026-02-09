@@ -3,9 +3,8 @@ import jwt from "jsonwebtoken";
 import config from "./config";
 import { AuthRequest } from "./interface";
 import { JwtPayload } from "./interface";
-import multer from "multer";
 
-const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+const verifyToken = (req: AuthRequest, res: Response, next: NextFunction): void => {
   let token =
     req.body?.token ||
     req.query?.token ||
@@ -17,7 +16,8 @@ const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 
   if (!token) {
-    return res.status(403).send("Token szükséges a hozzáféréshez!");
+    res.status(403).send("Token szükséges a hozzáféréshez!");
+    return;
   }
 
   try {
@@ -25,20 +25,23 @@ const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = decodedToken;
     next();
   } catch {
-    return res.status(401).send("Hibás vagy lejárt token");
+    res.status(401).send("Hibás vagy lejárt token");
+    return;
   }
 };
 
 
 
 
-export function checkAdmin(req:AuthRequest, res:Response, next:NextFunction){
+export const checkAdmin: any = (req:AuthRequest, res:Response, next:NextFunction): void=>{
   if(!req.user){
-    return res.status(401).json("Nincs bejelentkezve!");
+    res.status(401).json("Nincs bejelentkezve!");
+    return;
   }
 
   if(req.user.role !== "admin"){
-    return res.status(403).json("Admin jogosultság szükséges");
+    res.status(403).json("Admin jogosultság szükséges");
+    return;
   }
   next();
 }

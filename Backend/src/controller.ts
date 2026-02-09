@@ -3,13 +3,7 @@ import mysql from "mysql2/promise";
 import config from "./config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import {
-  AuthRequest,
-  OrderStats,
-  Product,
-  User,
-  UserResponse,
-} from "./interface";
+import {AuthRequest,OrderStats,Product,User,UserResponse,} from "./interface";
 import { uploadMiddleware, uploadMiddlewareMultiple } from "./uploadMiddleware";
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
@@ -258,7 +252,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   } 
 };
 
-export const getProducts = async (req: Request, res: Response) => {
+export const getProducts = async (_req: Request, res: Response) => {
   const connection = await mysql.createConnection(config.database);
 
   try {
@@ -809,7 +803,7 @@ export const createRating = async (req: AuthRequest, res: Response) => {
 };
 
 
-export const getRatingAverage = async (req:any, res: Response) =>{
+export const getRatingAverage = async (_req:any, res: Response) =>{
   const connection = await mysql.createConnection(config.database);
 
   try{
@@ -827,7 +821,7 @@ export const getRatingAverage = async (req:any, res: Response) =>{
   }
 }
 
-export const getAllratings = async (req: Request, res: Response) =>{
+export const getAllratings = async (_req: Request, res: Response) =>{
   const connection = await mysql.createConnection(config.database);
 
   try{
