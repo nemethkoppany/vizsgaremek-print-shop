@@ -1,8 +1,19 @@
 import { useMemo, useRef, useState, useEffect } from "react";
+import { api } from "../api";
 
 const monthsHU = [
-  "Január","Február","Március","Április","Május","Június",
-  "Július","Augusztus","Szeptember","Október","November","December",
+  "Január",
+  "Február",
+  "Március",
+  "Április",
+  "Május",
+  "Június",
+  "Július",
+  "Augusztus",
+  "Szeptember",
+  "Október",
+  "November",
+  "December",
 ];
 
 const COLOR_GROUPS = [
@@ -45,7 +56,33 @@ const COLOR_GROUPS = [
 
 const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
 
-export default function Services({ addToCart, goToCart }) {
+function findProductByName(products, wantedName) {
+  const target = String(wantedName || "").trim().toLowerCase();
+  const list = Array.isArray(products) ? products : [];
+  return list.find((p) => String(p?.name || "").trim().toLowerCase() === target) || null;
+}
+
+function resolveWantedProductName(type, { paperSize, paperWeight, colorMode }) {
+  if (type === "poster") {
+    if (paperWeight === "80g") return "Poszter nyomtatás – tervrajz (80g)";
+    if (paperWeight === "140g") return "Poszter nyomtatás – plakát (140g)";
+    if (paperWeight === "Fotópapír") return "Poszter nyomtatás – fotópapír";
+    return "Poszter nyomtatás – plakát (140g)";
+  }
+
+  if (type === "calendar") {
+    if (paperSize === "A3") return "Falinaptár – 13 lapos A3";
+    return "Falinaptár – 13 lapos A4";
+  }
+
+  const size = paperSize === "A3" ? "A3" : "A4";
+  const isColor = colorMode === "Színes";
+
+  if (isColor) return `${size} színes nyomtatás (egyoldalas)`;
+  return `${size} fekete-fehér nyomtatás (egyoldalas)`;
+}
+
+export default function Services({ addToCart, goToCart, products = [] }) {
   const [tab, setTab] = useState("print");
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("");
@@ -55,6 +92,24 @@ export default function Services({ addToCart, goToCart }) {
     setMsgType(type);
     setTimeout(() => setMsg(""), 4000);
   };
+
+  const [quantity, setQuantity] = useState(1);
+
+  const me = Boolean(localStorage.getItem("token"));
+
+  const [localProducts, setLocalProducts] = useState(products);
+  useEffect(() => setLocalProducts(products), [products]);
+
+  useEffect(() => {
+    if (localProducts?.length) return;
+
+    (async () => {
+      try {
+        const data = await api.getProducts();
+        setLocalProducts(Array.isArray(data) ? data : []);
+      } catch {}
+    })();
+  }, [localProducts]);
 
   const [paperSize, setPaperSize] = useState("A4");
   const [paperWeight, setPaperWeight] = useState("80g");
@@ -96,6 +151,7 @@ export default function Services({ addToCart, goToCart }) {
 
   const [printText, setPrintText] = useState("");
   const [posterImg, setPosterImg] = useState("");
+  const [posterFile, setPosterFile] = useState(null);
 
   const [calendarImgs, setCalendarImgs] = useState(Array(12).fill(null));
   const calendarRefs = useRef(Array.from({ length: 12 }, () => null));
@@ -105,6 +161,7 @@ export default function Services({ addToCart, goToCart }) {
   const onTxtFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
       const text = await file.text();
       setPrintText(text.slice(0, 2000));
@@ -119,6 +176,8 @@ export default function Services({ addToCart, goToCart }) {
   const onPosterFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setPosterFile(file);
     setPosterImg(URL.createObjectURL(file));
     showMsg("Kép betöltve!", "success");
     e.target.value = "";
@@ -127,12 +186,13 @@ export default function Services({ addToCart, goToCart }) {
   const onCalendarFile = (monthIndex, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const url = URL.createObjectURL(file);
 
     setCalendarImgs((prev) => {
       const next = [...prev];
       if (next[monthIndex]?.url) URL.revokeObjectURL(next[monthIndex].url);
-      next[monthIndex] = { url, name: file.name };
+      next[monthIndex] = { url, name: file.name, file };
       return next;
     });
 
@@ -141,6 +201,21 @@ export default function Services({ addToCart, goToCart }) {
   };
 
   const addItem = (type) => {
+    if (!me) return showMsg("A rendeléshez jelentkezzen be!", "error");
+
+    const wantedName = resolveWantedProductName(type, { paperSize, paperWeight, colorMode });
+    const matched = findProductByName(localProducts, wantedName);
+    const productId = matched?.product_id ?? matched?.id;
+
+    if (!productId) {
+      return showMsg(
+        "Ehhez a szolgáltatáshoz nincs megfelelő termék.",
+        "error"
+      );
+    }
+
+    const qty = Math.max(1, Number(quantity) || 1);
+
     if (type === "print") {
       if (paperWeight === "Fotópapír") {
         if (!posterImg) return showMsg("Töltsön fel egy képet!", "error");
@@ -148,9 +223,12 @@ export default function Services({ addToCart, goToCart }) {
         addToCart({
           id: uid(),
           category: "Nyomtatás / Másolás",
+          productId,
+          quantity: qty,
           options,
           previewType: "image",
           preview: posterImg,
+          files: posterFile ? [posterFile] : [],
           price: 0,
         });
 
@@ -163,9 +241,12 @@ export default function Services({ addToCart, goToCart }) {
       addToCart({
         id: uid(),
         category: "Nyomtatás / Másolás",
+        productId,
+        quantity: qty,
         options,
         previewType: "text",
         preview: text.slice(0, 300),
+        files: [],
         price: 0,
       });
 
@@ -178,9 +259,12 @@ export default function Services({ addToCart, goToCart }) {
       addToCart({
         id: uid(),
         category: "Poszter",
+        productId,
+        quantity: qty,
         options,
         previewType: "image",
         preview: posterImg,
+        files: posterFile ? [posterFile] : [],
         price: 0,
       });
 
@@ -188,23 +272,21 @@ export default function Services({ addToCart, goToCart }) {
     }
 
     if (type === "calendar") {
-      const missing = calendarImgs
-        .map((img, i) => (img ? null : monthsHU[i]))
-        .filter(Boolean);
+      const missing = calendarImgs.map((img, i) => (img ? null : monthsHU[i])).filter(Boolean);
 
       if (missing.length) {
-        return showMsg(
-          `Hiányzó képek az adott hónapban: ${missing.join(", ")}`,
-          "error"
-        );
+        return showMsg(`Hiányzó képek az adott hónapban: ${missing.join(", ")}`, "error");
       }
 
       addToCart({
         id: uid(),
         category: "Naptár",
+        productId,
+        quantity: qty,
         options,
         previewType: "calendar",
         preview: calendarImgs.map((x) => x.url),
+        files: calendarImgs.map((x) => x.file).filter(Boolean),
         price: 0,
       });
 
@@ -227,6 +309,18 @@ export default function Services({ addToCart, goToCart }) {
           <button className={tab === "calendar" ? "active" : ""} onClick={() => setTab("calendar")}>
             Naptár
           </button>
+        </div>
+
+        <div className="svc-qty">
+          <div className="svc-field">
+            <label>Mennyiség</label>
+            <input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+            />
+          </div>
         </div>
 
         <div className="svc-options">
@@ -257,14 +351,14 @@ export default function Services({ addToCart, goToCart }) {
             <div className="svc-row">
               <div className="svc-field">
                 <label>Papír méret</label>
-                <select value={paperSize} onChange={(e) => setPaperSize("A4")}>
+                <select value={paperSize} onChange={() => setPaperSize("A4")}>
                   <option value="A4">A4</option>
                 </select>
               </div>
 
               <div className="svc-field">
                 <label>Papír súly</label>
-                <select value={paperWeight} onChange={(e) => setPaperWeight("200g")}>
+                <select value={paperWeight} onChange={() => setPaperWeight("200g")}>
                   <option value="200g">200g</option>
                 </select>
               </div>
@@ -326,12 +420,20 @@ export default function Services({ addToCart, goToCart }) {
 
             {paperWeight !== "Fotópapír" ? (
               <>
-                <input ref={txtRef} type="file" accept=".txt,text/plain" className="hidden-file" onChange={onTxtFile} />
+                <input
+                  ref={txtRef}
+                  type="file"
+                  accept=".txt,text/plain"
+                  className="hidden-file"
+                  onChange={onTxtFile}
+                />
+
                 <button type="button" className="svc-secondary" onClick={() => pick(txtRef)}>
                   Szöveg feltöltése (.txt)
                 </button>
 
                 <label>Szöveg beírása:</label>
+
                 <textarea
                   className="svc-textarea"
                   value={printText}
@@ -350,7 +452,14 @@ export default function Services({ addToCart, goToCart }) {
               </>
             ) : (
               <>
-                <input ref={posterRef} type="file" accept="image/*" className="hidden-file" onChange={onPosterFile} />
+                <input
+                  ref={posterRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden-file"
+                  onChange={onPosterFile}
+                />
+
                 <button type="button" className="svc-secondary" onClick={() => pick(posterRef)}>
                   Kép feltöltése
                 </button>
@@ -358,15 +467,22 @@ export default function Services({ addToCart, goToCart }) {
                 <div className="svc-preview-wrap">
                   <div className="poster-mock">
                     <div className="poster-head">{headerLine}</div>
+
                     <div className="poster-body">
-                      {posterImg ? <img src={posterImg} alt="Fotópapír előnézet" /> : <div className="poster-placeholder">Töltsön fel egy képet…</div>}
+                      {posterImg ? (
+                        <img src={posterImg} alt="Fotópapír előnézet" />
+                      ) : (
+                        <div className="poster-placeholder">Töltsön fel egy képet…</div>
+                      )}
                     </div>
                   </div>
                 </div>
               </>
             )}
 
-            <button type="button" onClick={() => addItem("print")}>Kosárba</button>
+            <button type="button" onClick={() => addItem("print")}>
+              Kosárba
+            </button>
           </div>
         )}
 
@@ -374,7 +490,14 @@ export default function Services({ addToCart, goToCart }) {
           <div className="svc-section">
             <h2>Poszter</h2>
 
-            <input ref={posterRef} type="file" accept="image/*" className="hidden-file" onChange={onPosterFile} />
+            <input
+              ref={posterRef}
+              type="file"
+              accept="image/*"
+              className="hidden-file"
+              onChange={onPosterFile}
+            />
+
             <button type="button" className="svc-secondary" onClick={() => pick(posterRef)}>
               Kép feltöltése
             </button>
@@ -383,12 +506,18 @@ export default function Services({ addToCart, goToCart }) {
               <div className="poster-mock">
                 <div className="poster-head">{headerLine}</div>
                 <div className="poster-body">
-                  {posterImg ? <img src={posterImg} alt="Poszter előnézet" /> : <div className="poster-placeholder">Töltsön fel egy képet…</div>}
+                  {posterImg ? (
+                    <img src={posterImg} alt="Poszter előnézet" />
+                  ) : (
+                    <div className="poster-placeholder">Töltsön fel egy képet…</div>
+                  )}
                 </div>
               </div>
             </div>
 
-            <button type="button" onClick={() => addItem("poster")}>Kosárba</button>
+            <button type="button" onClick={() => addItem("poster")}>
+              Kosárba
+            </button>
           </div>
         )}
 
@@ -435,7 +564,9 @@ export default function Services({ addToCart, goToCart }) {
               </div>
             </div>
 
-            <button type="button" onClick={() => addItem("calendar")}>Kosárba</button>
+            <button type="button" onClick={() => addItem("calendar")}>
+              Kosárba
+            </button>
           </div>
         )}
 
