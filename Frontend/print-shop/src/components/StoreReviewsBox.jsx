@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { api } from "../api";
 
-const STORAGE_KEY = "dp_shop_reviews_v1";
-
-const clampStars = (n) => {
-  const x = Math.round(Number(n));
-  return Number.isNaN(x) ? 5 : Math.min(5, Math.max(1, x));
+const clamp = (n) => {
+  const x = Number(n);
+  if (Number.isNaN(x)) return 5;
+  return Math.max(1, Math.min(5, Math.round(x)));
 };
 
-const formatHUDate = (i) => {
+const fmt = (d) => {
   try {
-    return new Date(i).toLocaleString("hu-HU", {
+    return new Date(d).toLocaleString("hu-HU", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -21,188 +21,265 @@ const formatHUDate = (i) => {
   }
 };
 
-function Stars({ value = 0, size = "md" }) {
-  const v = Math.round((Number(value) || 0) * 2) / 2;
+const Stars = ({ value }) => {
+  const n = clamp(value);
   return (
-    <span className={`stars stars-${size}`} aria-label={`${v} / 5`}>
-      {Array.from({ length: 5 }, (_, i) => {
-        const n = i + 1;
-        const x = v >= n ? "full" : v >= n - 0.5 ? "half" : "empty";
-        return (
-          <span key={n} className={`star ${x}`} aria-hidden="true">
-            ★
-          </span>
-        );
-      })}
+    <span className="stars stars-md" aria-label={`${n} csillag`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <span key={i} className={`star ${i < n ? "full" : ""}`}>
+          ★
+        </span>
+      ))}
     </span>
   );
-}
+};
 
-export default function Reviewbox() {
-  const [items, setItems] = useState([]);
-  const [summary, setSummary] = useState({ avg: 0, count: 0 });
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", stars: 5, text: "" });
-  const [msg, setMsg] = useState(null);
+const toNum = (v) => {
+  const x = Number(v);
+  return Number.isFinite(x) ? x : null;
+};
 
-  const canSubmit = useMemo(
-    () => form.name.trim().length >= 2 && form.text.trim().length >= 10,
-    [form.name, form.text]
+const pickAvg = (raw) => {
+  const src = Array.isArray(raw) ? raw[0] : raw;
+  if (src == null) return null;
+
+  const direct = toNum(src);
+  if (direct != null) return direct;
+
+  if (typeof src !== "object") return null;
+
+  return (
+    toNum(src.avg) ??
+    toNum(src.average) ??
+    toNum(src.ratingAvg) ??
+    toNum(src.rating_avg) ??
+    (src.data ? toNum(src.data.avg) ?? toNum(src.data.average) : null)
   );
+};
 
-  const readLocal = () => {
+const pickCount = (raw) => {
+  const src = Array.isArray(raw) ? raw[0] : raw;
+  if (src == null) return null;
+
+  if (typeof src !== "object") return null;
+
+  return (
+    toNum(src.count) ??
+    toNum(src.total) ??
+    toNum(src.ratingsCount) ??
+    toNum(src.ratings_count) ??
+    (src.data ? toNum(src.data.count) ?? toNum(src.data.total) : null)
+  );
+};
+
+const calcSummaryFromRows = (rows) => {
+  const list = Array.isArray(rows) ? rows : [];
+  const nums = list.map((r) => toNum(r?.rating)).filter((x) => x != null);
+
+  if (nums.length === 0) return { avg: null, count: 0 };
+
+  const sum = nums.reduce((a, b) => a + b, 0);
+  return { avg: sum / nums.length, count: nums.length };
+};
+
+export default function StoreReviewsBox({ backendSummary = null, me = null }) {
+  const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const [summary, setSummary] = useState(() => {
+    const avg = pickAvg(backendSummary);
+    const count = pickCount(backendSummary);
+    return { avg, count };
+  });
+
+  const loadAll = async () => {
+    const rows = await api.getAllRatings();
+    const summaryFromList = calcSummaryFromRows(rows);
+
+    const list = (Array.isArray(rows) ? rows : [])
+      .slice(0, 6)
+      .map((r) => ({
+        id: r.rating_id ?? r.user_id ?? Math.random(),
+        name: r.user_name || r.name || r.email || "Felhasználó",
+        rating: r.rating,
+        comment: r.comment || "",
+        createdAt: r.createdAt,
+      }));
+
+    setItems(list);
+    setSummary(summaryFromList);
+    return rows;
+  };
+
+  const refreshAvg = async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      return Array.isArray(parsed?.items) ? parsed.items : [];
-    } catch {
-      return [];
+      const res = await api.getRatingAverage();
+      const avg = pickAvg(res);
+      const count = pickCount(res);
+
+      if (avg != null) {
+        setSummary((p) => ({
+          avg,
+          count: count != null ? count : p.count,
+        }));
+        return;
+      }
+    } catch {}
+
+    try {
+      await loadAll();
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (!me) {
+      setItems([]);
+      return;
+    }
+    loadAll().catch(() => {});
+  }, [me?.user_id]);
+
+  useEffect(() => {
+    const onUpdate = () => refreshAvg();
+    window.addEventListener("ratings-updated", onUpdate);
+    return () => window.removeEventListener("ratings-updated", onUpdate);
+  }, []);
+
+  const onSend = async (e) => {
+    e.preventDefault();
+    setMsg("");
+
+    try {
+      await api.createRating({
+        rating: clamp(rating),
+        comment: comment.trim() || null,
+      });
+
+      await loadAll();
+      refreshAvg();
+
+      window.dispatchEvent(new Event("ratings-updated"));
+
+      setOpen(false);
+      setComment("");
+      setMsg("Köszönjük értékelést!");
+      setTimeout(() => setMsg(""), 4000);
+    } catch (err) {
+      setMsg(err?.message || "Hiba történt");
     }
   };
 
-  const writeLocal = (list) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: list }));
-  };
-
-  const refresh = () => {
-    const all = readLocal()
-      .slice()
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    const count = all.length;
-    const avg =
-      count === 0 ? 0 : all.reduce((a, it) => a + (Number(it.stars) || 0), 0) / count;
-
-    setItems(all.slice(0, 6));
-    setSummary({ avg: Math.round(avg * 10) / 10, count });
-  };
-
-  useEffect(refresh, []);
-
-  const submit = (e) => {
-    e.preventDefault();
-    setMsg(null);
-
-    const payload = {
-      id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
-      name: form.name.trim(),
-      stars: clampStars(form.stars),
-      text: form.text.trim(),
-      createdAt: new Date().toISOString(),
-    };
-
-    const next = [payload, ...readLocal()];
-    writeLocal(next);
-    refresh();
-
-    setForm({ name: "", stars: 5, text: "" });
-    setOpen(false);
-
-    setMsg("Köszönjük! Az értékelését rögzítettük.");
-    setTimeout(() => setMsg(null), 5000);
-  };
+  const avgText = summary.avg == null ? "-" : summary.avg.toFixed(2);
 
   return (
     <section className="home-card-block reviews-card">
       <div className="reviews-head">
         <div className="reviews-title">
-          <div className="reviews-badge" aria-hidden="true">
-            ★
-          </div>
+          <div className="reviews-badge">★</div>
           <div>
-            <h2 className="reviews-h2">Vásárlói értékelések</h2>
-            <p className="reviews-sub">Írja meg a véleményét, hogy mit gondol a kiszolgálásról.</p>
+            <h2 className="reviews-h2">Értékeljen minket!</h2>
+            <p className="reviews-sub">A felhasználók értékelései, visszajelzései alapján számolva az átlag értékelésünk:</p>
           </div>
         </div>
-        <button type="button" className="reviews-cta" onClick={() => setOpen(true)}>
-          Értékelés
+
+        <button
+          className="reviews-cta"
+          type="button"
+          onClick={() => (me ? setOpen(true) : null)}
+          disabled={!me}
+        >
+          Értékelés írása
         </button>
       </div>
+
       <div className="reviews-body">
         <div className="reviews-summary">
-          <div className="rating-num">
-            {summary.count === 0 ? "—" : summary.avg.toFixed(1)}
-          </div>
+          <div className="rating-num">{avgText}</div>
+
           <div className="rating-meta">
             <div className="stars-row">
-              <Stars value={summary.avg} size="lg" />
-              <span className="rating-count">{summary.count} vélemény</span>
+              <Stars value={summary.avg == null ? 0 : summary.avg} />
+              {summary.count != null && (
+                <span className="rating-count">({summary.count} értékelés alapján)</span>
+              )}
             </div>
+
+            {!me && <div className="rating-hint">Az értékelések megtekintéséhez jelentkezzen be.</div>}
+            {msg && <div className="reviews-msg">{msg}</div>}
           </div>
         </div>
-        {msg && <div className="reviews-msg">{msg}</div>}
-        <div className="reviews-list">
-          {items.length === 0 ? (
-            <div className="reviews-empty">Még nincs értékelés. Legyen ön az első! 🙂</div>
-          ) : (
-            items.map((r) => (
-              <article className="review-item" key={r.id}>
-                <div className="review-top">
-                  <div className="review-name">{r.name}</div>
-                  <div className="review-right">
-                    <Stars value={r.stars} />
-                    <div className="review-date">{formatHUDate(r.createdAt)}</div>
+
+        {me ? (
+          <div className="reviews-list">
+            {items.length === 0 ? (
+              <div className="reviews-empty">Még nincs értékelésünk, legyen ön az első.</div>
+            ) : (
+              items.map((r) => (
+                <div className="review-item" key={r.id}>
+                  <div className="review-top">
+                    <div className="review-name">{r.name}</div>
+
+                    <div className="review-right">
+                      <Stars value={r.rating} />
+                      <span className="review-date">{fmt(r.createdAt)}</span>
+                    </div>
                   </div>
+
+                  {r.comment && <div className="review-text">{r.comment}</div>}
                 </div>
-                <div className="review-text">{r.text}</div>
-              </article>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        ) : null}
       </div>
+
       {open && (
-        <div className="reviews-modal" onClick={() => setOpen(false)}>
-          <div className="reviews-modal-inner" onClick={(e) => e.stopPropagation()}>
+        <div className="reviews-modal" role="dialog" aria-modal="true">
+          <div className="reviews-modal-inner">
             <button
-              type="button"
               className="reviews-close"
+              type="button"
               onClick={() => setOpen(false)}
-              aria-label="Bezárás">
-              ✕
+              aria-label="Bezárás"
+            >
+              ×
             </button>
-            <h3 className="reviews-modal-title">Értékelés írása</h3>
-            <p className="reviews-modal-sub">Kérem írjon pár mondatot – a véleménye számít!</p>
-            <form onSubmit={submit} className="reviews-form">
+
+            <h3 className="reviews-modal-title">Értékelés</h3>
+            <p className="reviews-modal-sub">Értékeljen és írjon egy rövid véleményt honlapunkról.</p>
+
+            <form className="reviews-form" onSubmit={onSend}>
               <label>
-                Név
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="Pl.: Nagy Péter"
-                  maxLength={40}/>
-              </label>
-              <label>
-                Értékelés
-                <div className="rating-stars" aria-label="Csillagok kiválasztása">
+                Értékelés 1-5 csillagig
+                <div className="rating-stars">
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <span className="rating-star" key={n}>
+                    <span key={n}>
                       <input
-                        className="rating-input"
+                        id={`star_${n}`}
                         type="radio"
-                        id={`rating-${n}`}
                         name="stars"
-                        value={n}
-                        checked={form.stars === n}
-                        onChange={() => setForm((p) => ({ ...p, stars: n }))}/>
-                      <label className="rating-label" htmlFor={`rating-${n}`} aria-label={`${n} csillag`}>
-                        ★
-                      </label>
+                        checked={Number(rating) === n}
+                        onChange={() => setRating(n)}
+                      />
+                      <label htmlFor={`star_${n}`}>★</label>
                     </span>
                   ))}
                 </div>
               </label>
+
               <label>
-                Vélemény
+                Megjegyzés
                 <textarea
-                  value={form.text}
-                  onChange={(e) => setForm((p) => ({ ...p, text: e.target.value }))}
-                  placeholder="Írja le röviden a véleményét… (10-600 karakter)"
-                  rows={5}
-                  maxLength={600}/>
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Pl.: gyors és megbízható szolgáltatás"
+                />
               </label>
-              <button type="submit" className="reviews-submit" disabled={!canSubmit}>
-                Mentés
-              </button>
+
+              <button type="submit">Küldés</button>
             </form>
           </div>
         </div>

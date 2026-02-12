@@ -1,116 +1,132 @@
 export default function Arlista() {
   return (
-    <section className="price-page">
-      <div className="price-card">
-        <h1>Árlista</h1>
+    <section className="home-card-block price-wrap">
+      <header className="section-head">
+        <h2>Árlista</h2>
+        <p className="section-sub">
+          Az árak tájékoztató jellegűek. Nagyobb mennyiség esetén egyedi árajánlat is kérhető.
+        </p>
+      </header>
 
-        <table className="price-table">
-          <tbody>
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">
-                  Egyoldalas A/4 fekete-fehér nyomtatás és fénymásolás:
-                </span>
-                <p>1–10 oldalig: <strong>50 Ft / oldal</strong></p>
-                <p>11-100 oldalig: <strong>40 Ft / oldal</strong></p>
-                <p>101 oldaltól: <strong>30 Ft / oldal</strong></p>
-              </td>
-            </tr>
+      <div className="price-groups">
+        <div className="price-group">
+          <h3>Nyomtatás / fénymásolás</h3>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">
-                  Kétoldalas A/4 fekete-fehér nyomtatás és fénymásolás:
-                </span>
-                <p>1–10 oldalig: <strong>90 Ft / oldal</strong></p>
-                <p>11-100 oldalig: <strong>70 Ft / oldal</strong></p>
-                <p>101 oldaltól: <strong>50 Ft / oldal</strong></p>
-              </td>
-            </tr>
+          <div className="price-item">
+            <div className="price-title">Egyoldalas A/4 fekete-fehér</div>
+            <ul>
+              <li>1–10 oldal: <strong>50 Ft</strong>/oldal</li>
+              <li>11–100 oldal: <strong>40 Ft</strong>/oldal</li>
+              <li>101 oldal felett: <strong>30 Ft</strong>/oldal</li>
+            </ul>
+          </div>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">
-                  Nyomtatás A/3 fekete-fehér (egyoldalas):
-                </span>
-                <p><strong>100 Ft / oldal</strong></p>
-              </td>
-            </tr>
+          <div className="price-item">
+            <div className="price-title">Kétoldalas A/4 fekete-fehér</div>
+            <ul>
+              <li>1–10 oldal: <strong>90 Ft</strong>/oldal</li>
+              <li>11–100 oldal: <strong>70 Ft</strong>/oldal</li>
+              <li>101 oldal felett: <strong>50 Ft</strong>/oldal</li>
+            </ul>
+          </div>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">
-                  Nyomtatás A/3 fekete-fehér (kétoldalas):
-                </span>
-                <p><strong>180 Ft / oldal</strong></p>
-              </td>
-            </tr>
+          <div className="price-item">
+            <div className="price-title">Egyoldalas A/3 fekete-fehér</div>
+            <div className="price-line">
+              <span>Egységár</span>
+              <strong>100 Ft</strong>/oldal
+            </div>
+          </div>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">Diák / pedagógus kedvezmény:</span>
-                <ul>
-                  <li>Egyoldalas: <strong>25 Ft</strong></li>
-                  <li>Kétoldalas: <strong>45 Ft</strong></li>
-                </ul>
-              </td>
-            </tr>
+          <div className="price-item">
+            <div className="price-title">Kétoldalas A/3 fekete-fehér</div>
+            <div className="price-line">
+              <span>Egységár</span>
+              <strong>180 Ft</strong>/oldal
+            </div>
+          </div>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">
-                  Egyoldalas A/4 színes nyomtatás és fénymásolás:
-                </span>
-                <p><strong>120-250 Ft / oldal</strong> (telítettségtől függően)</p>
-              </td>
-            </tr>
+          <div className="price-item">
+            <div className="price-title">Diák/pedagógus kedvezmény</div>
+            <div className="price-line">
+              <span>Egyoldalas</span>
+              <strong>25 Ft</strong>/oldal
+            </div>
+            <div className="price-line">
+              <span>Kétoldalas</span>
+              <strong>45 Ft</strong>/oldal
+            </div>
+          </div>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">
-                  Kétoldalas A/4 színes nyomtatás és fénymásolás:
-                </span>
-                <p><strong>240-500 Ft / oldal</strong> (telítettségtől függően)</p>
-              </td>
-            </tr>
+          <div className="price-item">
+            <div className="price-title">Színes nyomtatás</div>
+            <div className="price-line">
+              <span>Egyoldalas A/4</span>
+              <strong>120–250 Ft</strong>/oldal
+            </div>
+            <div className="price-line">
+              <span>Kétoldalas A/4</span>
+              <strong>240–500 Ft</strong>/oldal
+            </div>
+            <div className="price-line">
+              <span>Egyoldalas A/3</span>
+              <strong>200–400 Ft</strong>/oldal
+            </div>
+            <div className="price-line">
+              <span>Kétoldalas A/3</span>
+              <strong>400–650 Ft</strong>/oldal
+            </div>
+            <p className="price-note">Az ár a telítettségtől függően változhat.</p>
+          </div>
+        </div>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">
-                  Egyoldalas A/3 színes nyomtatás és fénymásolás:
-                </span>
-                <p><strong>200-400 Ft / oldal</strong> (telítettségtől függően)</p>
-              </td>
-            </tr>
+        <div className="price-group">
+          <h3>Poszter nyomtatás</h3>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">
-                  Kétoldalas A/3 színes nyomtatás és fénymásolás:
-                </span>
-                <p><strong>400-650 Ft / oldal</strong> (telítettségtől függően)</p>
-              </td>
-            </tr>
+          <div className="price-item">
+            <div className="price-title">Tervrajz (80g)</div>
+            <div className="price-line">
+              <span>Ár</span>
+              <strong>2000 Ft</strong>/m²
+            </div>
+          </div>
 
-            <tr className="poster-row">
-              <td colSpan="2">
-                <span className="service-name">Poszter nyomtatás:</span>
-                <p>Tervrajz, 80g-os papírra: <strong>2000 Ft</strong></p>
-                <p>Plakát, 140g-os papírra: <strong>10000 Ft</strong></p>
-                <p>Fotópapírra: <strong>15000 Ft</strong></p>
-                <p><strong className="poster-note">Az árak m<sup>2</sup>-ben értendők.</strong></p>
-              </td>
-            </tr>
+          <div className="price-item">
+            <div className="price-title">Plakát (140g)</div>
+            <div className="price-line">
+              <span>Ár</span>
+              <strong>10000 Ft</strong>/m²
+            </div>
+          </div>
 
-            <tr>
-              <td colSpan="2">
-                <span className="service-name">Falinaptár készítés:</span>
-                <p>13 lapos A/4: <strong>3990 Ft</strong></p>
-                <p>13 lapos A/3: <strong>5490 Ft</strong></p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          <div className="price-item">
+            <div className="price-title">Fotópapír</div>
+            <div className="price-line">
+              <span>Ár</span>
+              <strong>15000 Ft</strong>/m²
+            </div>
+          </div>
+        </div>
+
+        <div className="price-group">
+          <h3>Falinaptár készítés</h3>
+
+          <div className="price-item">
+            <div className="price-title">13 lapos A/4</div>
+            <div className="price-line">
+              <span>Egységár</span>
+              <strong>3990 Ft</strong>
+            </div>
+          </div>
+
+          <div className="price-item">
+            <div className="price-title">13 lapos A/3</div>
+            <div className="price-line">
+              <span>Egységár</span>
+              <strong>5490 Ft</strong>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
