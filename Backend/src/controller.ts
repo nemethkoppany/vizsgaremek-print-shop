@@ -3,8 +3,15 @@ import mysql from "mysql2/promise";
 import config from "./config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import {AuthRequest,OrderStats,Product,User,UserResponse,} from "./interface";
+import {
+  AuthRequest,
+  OrderStats,
+  Product,
+  User,
+  UserResponse,
+} from "./interface";
 import { uploadMiddleware, uploadMiddlewareMultiple } from "./uploadMiddleware";
+import { sendOrderConfirmation } from "./sendOrderMail";
 
 //Egyenlőre itt lehet megadni a role-t, ez később még változhat
 export const registerUser = async (req: AuthRequest, res: Response) => {
@@ -20,7 +27,8 @@ export const registerUser = async (req: AuthRequest, res: Response) => {
     const connection = await mysql.createConnection(config.database);
 
     const [existing]: any = await connection.query(
-      "SELECT user_id FROM Users WHERE email = ?",[email]
+      "SELECT user_id FROM Users WHERE email = ?",
+      [email],
     );
 
     if (existing.length > 0) {
@@ -34,7 +42,8 @@ export const registerUser = async (req: AuthRequest, res: Response) => {
 
     const [result]: any = await connection.query(
       `INSERT INTO Users (name, email, password, registration_date, role, profile_image) 
-       VALUES (?, ?, ?, NOW(), ?, ?)`,[full_name, email, hashedPassword, userRole, profileImage]
+       VALUES (?, ?, ?, NOW(), ?, ?)`,
+      [full_name, email, hashedPassword, userRole, profileImage],
     );
 
     const user_id = result.insertId;
@@ -42,7 +51,7 @@ export const registerUser = async (req: AuthRequest, res: Response) => {
     const accessToken = jwt.sign(
       { user_id, email, role: userRole },
       process.env.JWT_SECRET!,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" },
     );
 
     return res.status(201).json({
@@ -59,7 +68,6 @@ export const registerUser = async (req: AuthRequest, res: Response) => {
   }
 };
 
-
 export const loginUser = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
@@ -72,7 +80,7 @@ export const loginUser = async (req: Request, res: Response) => {
   try {
     const [rows] = await connection.query(
       "SELECT user_id, name, email, password, role FROM Users WHERE email = ?",
-      [email]
+      [email],
     );
 
     const users = rows as User[];
@@ -92,13 +100,13 @@ export const loginUser = async (req: Request, res: Response) => {
 
     await connection.query(
       "UPDATE Users SET last_login = NOW() WHERE user_id = ?",
-      [user.user_id]
+      [user.user_id],
     );
 
     const accessToken = jwt.sign(
       { user_id: user.user_id, email: user.email, role: user.role },
       process.env.JWT_SECRET!,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" },
     );
 
     return res.status(200).json({
@@ -131,7 +139,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
   try {
     const [rows] = await connection.query(
       "SELECT password FROM Users WHERE user_id = ?",
-      [userId]
+      [userId],
     );
 
     const users = rows as User[];
@@ -173,7 +181,7 @@ export const getUserById = async (req: Request, res: Response) => {
   try {
     const [rows] = await connection.query(
       `SELECT user_id, email, name AS full_name, role, registration_date AS createdAt, last_login AS lastLogin FROM Users WHERE user_id = ?`,
-      [userId]
+      [userId],
     );
     const users = rows as UserResponse[];
 
@@ -238,7 +246,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   try {
     const [result]: any = await connection.execute(
       "DELETE FROM Users WHERE user_id = ?",
-      [id]
+      [id],
     );
 
     if (result.affectedRows === 0) {
@@ -249,7 +257,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Delete error:", err);
     return res.status(500).json("Szerver hiba");
-  } 
+  }
 };
 
 export const getProducts = async (_req: Request, res: Response) => {
@@ -257,7 +265,7 @@ export const getProducts = async (_req: Request, res: Response) => {
 
   try {
     const [rows] = await connection.query(
-      "SELECT product_id, name, description, base_price, in_stock, image_urls FROM Products"
+      "SELECT product_id, name, description, base_price, in_stock, image_urls FROM Products",
     );
 
     const products: Product[] = (rows as any[]).map((p) => ({
@@ -288,7 +296,7 @@ export const getProductById = async (req: Request, res: Response) => {
   try {
     const [rows] = await connection.query(
       "SELECT product_id, name, description, base_price, in_stock, image_urls FROM Products WHERE product_id = ? ",
-      [productId]
+      [productId],
     );
     const products = rows as any[];
 
@@ -331,7 +339,7 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
         base_price,
         in_stock,
         image_urls ? JSON.stringify(image_urls) : null,
-      ]
+      ],
     );
 
     return res.status(201).json({ success: true });
@@ -396,7 +404,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
   try {
     const [result]: any = await connection.query(
       "DELETE FROM Products WHERE product_id = ?",
-      [productId]
+      [productId],
     );
 
     if (result.affectedRows === 0) {
@@ -435,45 +443,46 @@ export const getOrderAnalytics = async (req: Request, res: Response) => {
   }
 };
 
-
-export const getLoginAnalytics = async (req:Request, res:Response) =>{
+export const getLoginAnalytics = async (req: Request, res: Response) => {
   const userId = Number(req.params.id);
 
-  if(!userId || isNaN(userId)){
+  if (!userId || isNaN(userId)) {
     return res.status(400).json("Hiányzó id");
   }
   const connection = await mysql.createConnection(config.database);
 
-    try{
-      const [rows] = await connection.query(
-        "SELECT last_login FROM Users WHERE user_id = ?",[userId]
-      );
+  try {
+    const [rows] = await connection.query(
+      "SELECT last_login FROM Users WHERE user_id = ?",
+      [userId],
+    );
 
-      const result = rows as User[];
+    const result = rows as User[];
 
-      if(result.length === 0){
-        return res.status(404).json("Felhasználó nem található");
-      }
-
-      return res.status(200).json({last_login: result[0].last_login});
+    if (result.length === 0) {
+      return res.status(404).json("Felhasználó nem található");
     }
-    catch(err){
-      console.error("Login analytics error: ",err)
-      return res.status(500).json("Szerver hiba");
-    }
-}
+
+    return res.status(200).json({ last_login: result[0].last_login });
+  } catch (err) {
+    console.error("Login analytics error: ", err);
+    return res.status(500).json("Szerver hiba");
+  }
+};
 
 export const uploadFile = async (req: AuthRequest, res: Response) => {
   try {
     await uploadMiddleware(req, res);
 
-    if (!req.file) return res.status(400).json({ error: "Nem lett fájl feltöltve!" });
+    if (!req.file)
+      return res.status(400).json({ error: "Nem lett fájl feltöltve!" });
 
     const { originalname, mimetype, size, filename } = req.file;
     const connection = await mysql.createConnection(config.database);
 
     const [result]: any = await connection.query(
-      `INSERT INTO Files (user_id, file_name, file_type, file_size, status) VALUES (?, ?, ?, ?, ?)`,[req.user!.user_id, filename, mimetype, size, "uploaded"]
+      `INSERT INTO Files (user_id, file_name, file_type, file_size, status) VALUES (?, ?, ?, ?, ?)`,
+      [req.user!.user_id, filename, mimetype, size, "uploaded"],
     );
 
     await connection.end();
@@ -505,7 +514,8 @@ export const uploadFilesMultiple = async (req: AuthRequest, res: Response) => {
       const { originalname, mimetype, size, filename } = file;
 
       const [result]: any = await connection.query(
-        `INSERT INTO Files (user_id, file_name, file_type, file_size, status) VALUES (?, ?, ?, ?, ?)`,[req.user!.user_id, filename, mimetype, size, "uploaded"]
+        `INSERT INTO Files (user_id, file_name, file_type, file_size, status) VALUES (?, ?, ?, ?, ?)`,
+        [req.user!.user_id, filename, mimetype, size, "uploaded"],
       );
 
       savedFiles.push({
@@ -532,7 +542,8 @@ export const downloadFile = async (req: any, res: any) => {
 
   try {
     const [rows]: any = await connection.query(
-      "SELECT file_name FROM Files WHERE file_id = ?",[fileId]
+      "SELECT file_name FROM Files WHERE file_id = ?",
+      [fileId],
     );
 
     if (!rows.length) {
@@ -557,26 +568,28 @@ export const deleteFile = async (req: Request, res: Response) => {
 
   try {
     const [results]: any = await connection.query(
-      "SELECT file_name FROM Files WHERE file_id = ?",[fileId]
+      "SELECT file_name FROM Files WHERE file_id = ?",
+      [fileId],
     );
 
     if (results.length === 0) {
       return res.status(404).json({ error: "A fájl nem található!" });
     }
 
-    await connection.query("DELETE FROM Tetel_fajlok WHERE file_id = ?", [fileId]);
+    await connection.query("DELETE FROM Tetel_fajlok WHERE file_id = ?", [
+      fileId,
+    ]);
     await connection.query("DELETE FROM Files WHERE file_id = ?", [fileId]);
 
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error(err);
-    return res.status(500).json( "Szerver hiba");
+    return res.status(500).json("Szerver hiba");
   }
 };
 
-
 export const createOrder = async (req: AuthRequest, res: Response) => {
-  const { items } = req.body; 
+  const { items } = req.body;
 
   if (!items || !Array.isArray(items) || items.length === 0)
     return res.status(400).json({ error: "Nincsenek termékek a rendeléshez!" });
@@ -585,7 +598,8 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
 
   try {
     const [orderResult]: any = await connection.query(
-      `INSERT INTO Orders (user_id, order_date, status, total_price, payment_status) VALUES (?, NOW(), ?, ?, ?)`,[req.user!.user_id, "pending", 0, "pending"]
+      `INSERT INTO Orders (user_id, order_date, status, total_price, payment_status) VALUES (?, NOW(), ?, ?, ?)`,
+      [req.user!.user_id, "pending", 0, "pending"],
     );
 
     const orderId = orderResult.insertId;
@@ -593,7 +607,8 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
 
     for (const item of items) {
       const [productRows]: any = await connection.query(
-        "SELECT name, base_price, in_stock FROM Products WHERE product_id = ?",[item.productId]
+        "SELECT name, base_price, in_stock FROM Products WHERE product_id = ?",
+        [item.productId],
       );
 
       if (!productRows.length)
@@ -608,45 +623,66 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       totalPrice += price;
 
       const [orderItemResult]: any = await connection.query(
-        `INSERT INTO Order_items (order_id, product_id, quantity, subtotal) VALUES (?, ?, ?, ?)`,[orderId, item.productId, item.quantity, price]
+        `INSERT INTO Order_items (order_id, product_id, quantity, subtotal) VALUES (?, ?, ?, ?)`,
+        [orderId, item.productId, item.quantity, price],
       );
 
       if (item.fileId) {
         await connection.query(
-          `INSERT INTO Tetel_fajlok (order_item_id, file_id) VALUES (?, ?)`,[orderItemResult.insertId, item.fileId]
+          `INSERT INTO Tetel_fajlok (order_item_id, file_id) VALUES (?, ?)`,
+          [orderItemResult.insertId, item.fileId],
         );
       }
     }
 
-    await connection.query("UPDATE Orders SET total_price = ? WHERE order_id = ?", [totalPrice, orderId]);
+    await connection.query(
+      "UPDATE Orders SET total_price = ? WHERE order_id = ?",
+      [totalPrice, orderId],
+    );
 
-    return res.status(201).json({ order_id: orderId, status: "pending", total_price: totalPrice });
+    
+    const [userRows]: any = await connection.query(
+      "SELECT email FROM Users WHERE user_id = ?",
+      [req.user!.user_id],
+    );
+
+    const userEmail = userRows[0].email;
+
+    await sendOrderConfirmation(userEmail, orderId, totalPrice);
+
+    return res
+      .status(201)
+      .json({ order_id: orderId, status: "pending", total_price: totalPrice });
   } catch (err: any) {
     console.error("Create order error:", err);
-    return res.status(500).json({ error: err.message || "Sikertelen rendelés" });
+    return res
+      .status(500)
+      .json({ error: err.message || "Sikertelen rendelés" });
   }
 };
 
-export const getOrder = async (req: Request, res: Response) =>{
+export const getOrder = async (req: Request, res: Response) => {
   const orderId = req.params.id;
 
   const connection = await mysql.createConnection(config.database);
 
-  try{
+  try {
     const [orders]: any = await connection.query(
-      "SELECT order_id, status, total_price FROM Orders WHERE order_id = ?",[orderId]
+      "SELECT order_id, status, total_price FROM Orders WHERE order_id = ?",
+      [orderId],
     );
-    if(orders.length === 0){
+    if (orders.length === 0) {
       return res.status(404).json("Rendelés nem található");
     }
 
     const order = orders[0];
 
     const [items]: any = await connection.query(
-      "SELECT oi.product_id, p.name as product_name, oi.quantity, oi.subtotal FROM Order_items oi JOIN Products p ON oi.product_id = p.product_id WHERE oi.order_id = ?",[orderId]
+      "SELECT oi.product_id, p.name as product_name, oi.quantity, oi.subtotal FROM Order_items oi JOIN Products p ON oi.product_id = p.product_id WHERE oi.order_id = ?",
+      [orderId],
     );
 
-     const response = {
+    const response = {
       order_id: order.order_id,
       status: order.status,
       total_price: order.total_price,
@@ -654,184 +690,183 @@ export const getOrder = async (req: Request, res: Response) =>{
         product_id: item.product_id,
         name: item.product_name,
         quantity: item.quantity,
-        subtotal: item.subtotal
-      }))
+        subtotal: item.subtotal,
+      })),
     };
 
     return res.status(200).json(response);
-  }
-  catch(err){
-    console.error("Get order error",err);
+  } catch (err) {
+    console.error("Get order error", err);
     return res.status(500).json("Hiba a rendelés lekérdezésekor");
   }
-}
+};
 
-export const updateOrderStatus = async (req:AuthRequest, res: Response) => {
+export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   const orderId = parseInt(req.params.id);
-  const {status} = req.body;
+  const { status } = req.body;
 
-  if(isNaN(orderId)){
+  if (isNaN(orderId)) {
     return res.status(400).json("Hibás rendelés id");
   }
 
-  if(!status || typeof status !== "string"){
+  if (!status || typeof status !== "string") {
     return res.status(400).json("Hiányzó vagy érvénytelen status");
   }
 
   const connection = await mysql.createConnection(config.database);
 
-  try{
+  try {
     const [result]: any = await connection.query(
-      "UPDATE Orders SET status = ? WHERE order_id = ?",[status, orderId]
+      "UPDATE Orders SET status = ? WHERE order_id = ?",
+      [status, orderId],
     );
 
-    if(result.affectedRows === 0){
+    if (result.affectedRows === 0) {
       return res.status(404).json("A rendelés nem talákható");
     }
 
-    return res.status(200).json({success:true});
-  }
-  catch(err){
+    return res.status(200).json({ success: true });
+  } catch (err) {
     console.error("Update order status error:", err);
     return res.status(500).json("Szerver hiba");
   }
-}
+};
 
-export const getUserOrders = async (req:AuthRequest, res: Response) =>{
+export const getUserOrders = async (req: AuthRequest, res: Response) => {
   const userId = parseInt(req.params.id);
-  
-  
-  if(isNaN(userId)){
+
+  if (isNaN(userId)) {
     return res.status(400).json("Hibás felhasználó id");
   }
 
-  if(req.user!.role !== "admin" && req.user!.user_id !== userId){
+  if (req.user!.role !== "admin" && req.user!.user_id !== userId) {
     return res.status(403).json("Nincs jogosultság");
   }
 
   const connection = await mysql.createConnection(config.database);
 
-  try{
+  try {
     const [rows]: any = await connection.query(
-      "SELECT order_id, status, total_price, order_date AS createdAt FROM Orders WHERE user_id = ? ORDER BY order_date DESC",[userId]
-    )
+      "SELECT order_id, status, total_price, order_date AS createdAt FROM Orders WHERE user_id = ? ORDER BY order_date DESC",
+      [userId],
+    );
 
     return res.status(200).json(rows);
-  }catch(err){
-    console.error("Get user orders error: ",err);
+  } catch (err) {
+    console.error("Get user orders error: ", err);
     return res.status(500).json("Szerver hiba");
   }
-}
+};
 
-export const createSystemLog = async (req: AuthRequest, res: Response) =>{
-
-
+export const createSystemLog = async (req: AuthRequest, res: Response) => {
   //AUTOMATIKUS LOGOLÁS
-// await connection.query(
-//   "INSERT INTO Audit_logs (user_id, event_type, message) VALUES (?, ?, ?)",
-//   [req.user!.user_id, "ORDER_STATUS_CHANGED", `Order ${orderId} -> ${status}`]
-// );
+  // await connection.query(
+  //   "INSERT INTO Audit_logs (user_id, event_type, message) VALUES (?, ?, ?)",
+  //   [req.user!.user_id, "ORDER_STATUS_CHANGED", `Order ${orderId} -> ${status}`]
+  // );
 
+  const { userId, eventType, message } = req.body;
 
-
-  const {userId, eventType, message} = req.body;
-
-  if(!eventType || typeof eventType !== "string"){
+  if (!eventType || typeof eventType !== "string") {
     return res.status(400).json("Hiányzó vagy hibás eventType");
   }
 
-  if(!message || typeof message !== "string"){
-     return res.status(400).json("Hiányzó vagy hibás message");
+  if (!message || typeof message !== "string") {
+    return res.status(400).json("Hiányzó vagy hibás message");
   }
 
   const connection = await mysql.createConnection(config.database);
 
-  try{
-    const [result]:any = await connection.query(
-      "INSERT INTO Audit_logs (user_id, event_type, message) VALUE (?,?,?)",[userId, eventType, message]
-    )
+  try {
+    const [result]: any = await connection.query(
+      "INSERT INTO Audit_logs (user_id, event_type, message) VALUE (?,?,?)",
+      [userId, eventType, message],
+    );
 
-    return res.status(201).json({log_id: result.insertId})
-  }catch(err){
-    console.error("Create system log error",err);
+    return res.status(201).json({ log_id: result.insertId });
+  } catch (err) {
+    console.error("Create system log error", err);
     return res.status(500).json("Szerver hiba");
   }
-}
+};
 
-export const getAuditLogs = async (req:AuthRequest, res: Response) =>{
+export const getAuditLogs = async (req: AuthRequest, res: Response) => {
   const userId = Number(req.params.id);
 
   if (isNaN(userId)) {
     return res.status(400).json("Hibás user id");
   }
 
-   const connection = await mysql.createConnection(config.database);
+  const connection = await mysql.createConnection(config.database);
 
-   try{
-    const [rows]:any = await connection.query(
-      "SELECT log_id, user_id, event_type, message, createdAt FROM Audit_logs WHERE user_id =  ? ORDER BY createdAt DESC",[userId]
-    )
+  try {
+    const [rows]: any = await connection.query(
+      "SELECT log_id, user_id, event_type, message, createdAt FROM Audit_logs WHERE user_id =  ? ORDER BY createdAt DESC",
+      [userId],
+    );
 
     return res.status(200).json(rows);
-   }catch(err){
-    console.error("Get audit logs error",err);
+  } catch (err) {
+    console.error("Get audit logs error", err);
     return res.status(500).json("Szerver hiba");
-    
-   }
-}
+  }
+};
 
 export const createRating = async (req: AuthRequest, res: Response) => {
   const { rating, comment } = req.body;
   const userId = req.user!.user_id;
 
   if (!rating || typeof rating !== "number" || rating < 1 || rating > 5) {
-    return res.status(400).json({ error: "Az értékelésnek 1 és 5 között kell lennie." });
+    return res
+      .status(400)
+      .json({ error: "Az értékelésnek 1 és 5 között kell lennie." });
   }
 
   const connection = await mysql.createConnection(config.database);
 
   try {
     await connection.query(
-      "INSERT INTO Ratings (user_id, rating, comment) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rating = VALUES(rating),comment = VALUES(comment)",[userId, rating, comment || null]
+      "INSERT INTO Ratings (user_id, rating, comment) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rating = VALUES(rating),comment = VALUES(comment)",
+      [userId, rating, comment || null],
     );
 
     return res.status(201).json({ success: true });
   } catch (err) {
     console.error("Create rating error:", err);
-    return res.status(500).json({ error: "Nem sikerült menteni az értékelést." });
+    return res
+      .status(500)
+      .json({ error: "Nem sikerült menteni az értékelést." });
   }
 };
 
-
-export const getRatingAverage = async (_req:any, res: Response) =>{
+export const getRatingAverage = async (_req: any, res: Response) => {
   const connection = await mysql.createConnection(config.database);
 
-  try{
+  try {
     const [rows]: any = await connection.query(
-      "SELECT COUNT(*) AS total_ratings, ROUND(AVG(RATING),1) AS average_rating FROM Ratings"
+      "SELECT COUNT(*) AS total_ratings, ROUND(AVG(RATING),1) AS average_rating FROM Ratings",
     );
 
     return res.status(200).json({
       total_ratings: rows[0].total_ratings,
-      average_rating:rows[0].average_rating || 0
+      average_rating: rows[0].average_rating || 0,
     });
-  }catch(err){
-    console.error("GET average rating error: ",err);
+  } catch (err) {
+    console.error("GET average rating error: ", err);
     return res.status(500).json("Nem sikerült lekérni az értékeléseket");
   }
-}
+};
 
-export const getAllratings = async (_req: Request, res: Response) =>{
+export const getAllratings = async (_req: Request, res: Response) => {
   const connection = await mysql.createConnection(config.database);
 
-  try{
-    const [rows]:any = await connection.query(
-      "SELECT r.rating_id, r.rating, r.comment, r.createdAt, u.user_id, u.name AS user_name FROM Ratings r JOIN Users u ON r.user_id = u.user_id ORDER BY r.createdAt DESC"
+  try {
+    const [rows]: any = await connection.query(
+      "SELECT r.rating_id, r.rating, r.comment, r.createdAt, u.user_id, u.name AS user_name FROM Ratings r JOIN Users u ON r.user_id = u.user_id ORDER BY r.createdAt DESC",
     );
     return res.status(200).json(rows);
-  }
-  catch(err){
-    console.error("Get ratings error: ",err);
+  } catch (err) {
+    console.error("Get ratings error: ", err);
     return res.status(500).json("Szerver hiba");
   }
-}
+};
