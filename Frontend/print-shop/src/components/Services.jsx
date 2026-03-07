@@ -56,6 +56,29 @@ const COLOR_GROUPS = [
 
 const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
 
+const fileToDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ""));
+    r.onerror = () => reject(new Error("file_read_error"));
+    r.readAsDataURL(file);
+  });
+
+const countPdfPages = (buf) => {
+  try {
+    const bytes = new Uint8Array(buf);
+    let text = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      text += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    const matches = text.match(/\/Type\s*\/Page(?!s)/g);
+    return matches ? matches.length : null;
+  } catch {
+    return null;
+  }
+};
+
 function findProductByName(products, wantedName) {
   const target = String(wantedName || "").trim().toLowerCase();
   const list = Array.isArray(products) ? products : [];
@@ -82,11 +105,10 @@ function resolveWantedProductName(type, { paperSize, paperWeight, colorMode }) {
   return `${size} fekete-fehér nyomtatás (egyoldalas)`;
 }
 
-export default function Services({ addToCart, goToCart, products = [] }) {
+export default function Services({ addToCart, goToCart, products = [], me }) {
   const [tab, setTab] = useState("print");
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("");
-
   const showMsg = (text, type) => {
     setMsg(text);
     setMsgType(type);
@@ -95,14 +117,11 @@ export default function Services({ addToCart, goToCart, products = [] }) {
 
   const [quantity, setQuantity] = useState(1);
 
-  const me = Boolean(localStorage.getItem("token"));
-
   const [localProducts, setLocalProducts] = useState(products);
   useEffect(() => setLocalProducts(products), [products]);
 
   useEffect(() => {
     if (localProducts?.length) return;
-
     (async () => {
       try {
         const data = await api.getProducts();
@@ -122,13 +141,6 @@ export default function Services({ addToCart, goToCart, products = [] }) {
   );
 
   useEffect(() => {
-    if (tab === "print" && paperWeight === "Fotópapír") {
-      setColorMode("Fekete-fehér");
-      setPaperColor("Fehér");
-    }
-  }, [tab, paperWeight]);
-
-  useEffect(() => {
     if (tab === "poster") {
       setPaperColor("Fehér");
       setColorMode("Fekete-fehér");
@@ -146,10 +158,10 @@ export default function Services({ addToCart, goToCart, products = [] }) {
 
   const headerLine = `${paperSize} • ${paperWeight} • ${paperColor} • ${colorMode}`;
 
-  const txtRef = useRef(null);
+  const docRef = useRef(null);
   const posterRef = useRef(null);
 
-  const [printText, setPrintText] = useState("");
+  const [docMeta, setDocMeta] = useState(null); // { name, type, size, pages, dataUrl }
   const [posterImg, setPosterImg] = useState("");
   const [posterFile, setPosterFile] = useState(null);
 
@@ -158,16 +170,40 @@ export default function Services({ addToCart, goToCart, products = [] }) {
 
   const pick = (ref) => ref?.current?.click();
 
-  const onTxtFile = async (e) => {
+  const onDocFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const isPdf = (file.type || "").toLowerCase().includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) {
+      showMsg("Csak PDF dokumentumot tölts fel!", "error");
+      e.target.value = "";
+      return;
+    }
+
+    const maxMb = 10;
+    if (file.size > maxMb * 1024 * 1024) {
+      showMsg(`A fájl túl nagy (${maxMb}MB felett). Kisebb PDF-et tölts fel!`, "error");
+      e.target.value = "";
+      return;
+    }
+
     try {
-      const text = await file.text();
-      setPrintText(text.slice(0, 2000));
-      showMsg("Szöveg betöltve!", "success");
+      const buf = await file.arrayBuffer();
+      const pages = countPdfPages(buf);
+      const dataUrl = await fileToDataUrl(file);
+
+      setDocMeta({
+        name: file.name,
+        type: file.type || "application/pdf",
+        size: file.size,
+        pages: pages || null,
+        dataUrl,
+      });
+
+      showMsg("Dokumentum betöltve!", "success");
     } catch {
-      showMsg("Nem sikerült beolvasni a fájlt.", "error");
+      showMsg("Nem sikerült beolvasni a PDF-et.", "error");
     } finally {
       e.target.value = "";
     }
@@ -208,44 +244,30 @@ export default function Services({ addToCart, goToCart, products = [] }) {
     const productId = matched?.product_id ?? matched?.id;
 
     if (!productId) {
-      return showMsg(
-        "Ehhez a szolgáltatáshoz nincs megfelelő termék.",
-        "error"
-      );
+      return showMsg("Ehhez a szolgáltatáshoz nincs megfelelő termék.", "error");
     }
 
     const qty = Math.max(1, Number(quantity) || 1);
 
     if (type === "print") {
-      if (paperWeight === "Fotópapír") {
-        if (!posterImg) return showMsg("Töltsön fel egy képet!", "error");
-
-        addToCart({
-          id: uid(),
-          category: "Nyomtatás / Másolás",
-          productId,
-          quantity: qty,
-          options,
-          previewType: "image",
-          preview: posterImg,
-          files: posterFile ? [posterFile] : [],
-          price: 0,
-        });
-
-        return showMsg("Hozzáadva a kosárhoz!", "success");
-      }
-
-      const text = (printText || "").trim();
-      if (!text) return showMsg("Adjon meg szöveget vagy töltsön fel .txt fájlt!", "error");
+      if (!docMeta?.dataUrl) return showMsg("Töltsön fel egy PDF dokumentumot!", "error");
 
       addToCart({
         id: uid(),
         category: "Nyomtatás / Másolás",
         productId,
-        quantity: qty,
+        quantity: qty, // példányszám
         options,
-        previewType: "text",
-        preview: text.slice(0, 300),
+        previewType: "document",
+        preview: {
+          name: docMeta.name,
+          pages: docMeta.pages,
+        },
+        fileDataUrl: docMeta.dataUrl,
+        fileName: docMeta.name,
+        fileType: docMeta.type,
+        fileSize: docMeta.size,
+        filePages: docMeta.pages,
         files: [],
         price: 0,
       });
@@ -273,7 +295,6 @@ export default function Services({ addToCart, goToCart, products = [] }) {
 
     if (type === "calendar") {
       const missing = calendarImgs.map((img, i) => (img ? null : monthsHU[i])).filter(Boolean);
-
       if (missing.length) {
         return showMsg(`Hiányzó képek az adott hónapban: ${missing.join(", ")}`, "error");
       }
@@ -335,7 +356,7 @@ export default function Services({ addToCart, goToCart, products = [] }) {
                 </select>
               </div>
 
-              {tab !== "poster" && !(tab === "print" && paperWeight === "Fotópapír") && (
+              {tab !== "poster" && (
                 <div className="svc-field">
                   <label>Szöveg szín</label>
                   <select value={colorMode} onChange={(e) => setColorMode(e.target.value)}>
@@ -374,7 +395,7 @@ export default function Services({ addToCart, goToCart, products = [] }) {
                   <option value="120g">120g</option>
                   <option value="140g">140g</option>
                   <option value="200g">200g</option>
-                  {tab !== "poster" && <option value="Fotópapír">Fotópapír</option>}
+                  {tab === "poster" && <option value="Fotópapír">Fotópapír</option>}
                 </select>
               </div>
 
@@ -418,67 +439,36 @@ export default function Services({ addToCart, goToCart, products = [] }) {
           <div className="svc-section">
             <h2>Nyomtatás / Másolás</h2>
 
-            {paperWeight !== "Fotópapír" ? (
-              <>
-                <input
-                  ref={txtRef}
-                  type="file"
-                  accept=".txt,text/plain"
-                  className="hidden-file"
-                  onChange={onTxtFile}
-                />
+            <input
+              ref={docRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden-file"
+              onChange={onDocFile}
+            />
 
-                <button type="button" className="svc-secondary" onClick={() => pick(txtRef)}>
-                  Szöveg feltöltése (.txt)
-                </button>
+            <button type="button" className="svc-secondary" onClick={() => pick(docRef)}>
+              Dokumentum feltöltése (PDF)
+            </button>
 
-                <label>Szöveg beírása:</label>
-
-                <textarea
-                  className="svc-textarea"
-                  value={printText}
-                  onChange={(e) => setPrintText(e.target.value)}
-                  placeholder="Ide írja a szöveget vagy töltsön fel .txt fájlt…"
-                />
-
-                <div className="svc-preview-wrap">
-                  <div className="paper-mock">
-                    <div className="paper-head">{headerLine}</div>
-                    <div className="paper-body">
-                      {(printText || "Itt fog megjelenni a fent beírt szöveg…").slice(0, 600)}
+            <div className="svc-preview-wrap">
+              <div className="paper-mock">
+                <div className="paper-head">{headerLine}</div>
+                <div className="paper-body">
+                  {docMeta ? (
+                    <div className="doc-preview">
+                      <div><strong>{docMeta.name}</strong></div>
+                      <div className="doc-pages-badge">
+                        <span className="big">{docMeta.pages ? docMeta.pages : "?"}</span>
+                        <span className="small">oldal</span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    "Töltsön fel egy PDF dokumentumot…"
+                  )}
                 </div>
-              </>
-            ) : (
-              <>
-                <input
-                  ref={posterRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden-file"
-                  onChange={onPosterFile}
-                />
-
-                <button type="button" className="svc-secondary" onClick={() => pick(posterRef)}>
-                  Kép feltöltése
-                </button>
-
-                <div className="svc-preview-wrap">
-                  <div className="poster-mock">
-                    <div className="poster-head">{headerLine}</div>
-
-                    <div className="poster-body">
-                      {posterImg ? (
-                        <img src={posterImg} alt="Fotópapír előnézet" />
-                      ) : (
-                        <div className="poster-placeholder">Töltsön fel egy képet…</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+              </div>
+            </div>
 
             <button type="button" onClick={() => addItem("print")}>
               Kosárba
