@@ -2269,3 +2269,51 @@ button.profile-icon:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.doc-pages-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:2px solid var(--stroke);
+  background:linear-gradient(180deg, rgba(56,189,248,.10), rgba(167,139,250,.06));
+  font-weight:900;
+  letter-spacing:.2px;
+  margin-top:10px;
+}
+
+.doc-pages-badge .big{
+  font-size:22px;
+  line-height:1;
+}
+
+.doc-pages-badge .small{
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+}
+
+.cart-doc-preview{
+  margin-top:10px;
+  padding:12px 12px;
+  border:2px solid var(--stroke);
+  border-radius:14px;
+  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+}
+
+.cart-doc-title{
+  font-weight:900;
+}
+
+.cart-doc-pages{
+  margin-top:6px;
+  font-weight:900;
+  font-size:16px;
+}
+
+.cart-doc-meta{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:13px;
+}

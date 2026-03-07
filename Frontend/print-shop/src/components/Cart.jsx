@@ -100,6 +100,22 @@ function CalendarPreview({ images, year }) {
 async function uploadFilesForItem(item) {
   let files = item?.files;
 
+  // Dokumentum (PDF): dataUrl-ból visszaalakítjuk File-lá, hogy feltölthető legyen
+  if ((!files || files.length === 0) && item?.previewType === "document" && item?.fileDataUrl) {
+    try {
+      const src = String(item.fileDataUrl || "");
+      const arr = src.split(",");
+      const mime = arr[0].match(/:(.*?);/)?.[1] || item.fileType || "application/pdf";
+      const bstr = atob(arr[1] || "");
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      files = [new File([u8arr], item.fileName || "document.pdf", { type: mime })];
+    } catch {
+      files = [];
+    }
+  }
+
   if ((!files || files.length === 0) && item.previewType === "calendar") {
     if (Array.isArray(item.preview)) {
       files = item.preview.map((src, i) => {
@@ -233,9 +249,10 @@ export default function Cart({ cartItems, removeFromCart, goToServices, me, onOr
       const p = productById.get(Number(pid));
       const qty = Number(it.quantity) || 1;
       const unit = Number(p?.base_price) || 0;
-      const sub = unit * qty;
+      const pages = it.previewType === "document" ? Math.max(1, Number(it.filePages || it.preview?.pages || 1) || 1) : 1;
+      const sub = unit * qty * pages;
 
-      perItem[it.id] = { unit, sub, ok: Boolean(p), pid };
+      perItem[it.id] = { unit, sub, ok: Boolean(p), pid, pages };
       resolved[it.id] = pid;
       total += sub;
     }
@@ -268,13 +285,17 @@ export default function Cart({ cartItems, removeFromCart, goToServices, me, onOr
 
         items.push({
           productId: pid,
-          quantity: Number(it.quantity) || 1,
+          quantity:
+          it.previewType === "document"
+            ? (Number(it.quantity) || 1) * Math.max(1, Number(it.filePages || it.preview?.pages || 1) || 1)
+            : Number(it.quantity) || 1,
           fileId: fileId || null,
         });
       }
 
       const res = await api.createOrder({ items });
       show(`Rendelés létrehozva (#${res.order_id})`, "success");
+      show("Visszaigazoló email elküldve a fiókhoz tartozó email címre.", "success");
 
       try {
         await api.createSystemLog({
@@ -364,7 +385,8 @@ export default function Cart({ cartItems, removeFromCart, goToServices, me, onOr
                         {p?.ok ? (
                           <div style={{ textAlign: "right" }}>
                             <div className="muted" style={{ fontSize: 13 }}>
-                              {money(p.unit)} / db
+                              {money(p.unit)} / {it.previewType === "document" ? "oldal" : "db"}
+                              {it.previewType === "document" && p?.pages > 1 ? ` • ${p.pages} oldal` : ""}
                             </div>
                             <div className="order-price">{money(p.sub)}</div>
                           </div>

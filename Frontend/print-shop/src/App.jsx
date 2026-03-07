@@ -2,6 +2,7 @@ import Fooldal from "./components/Fooldal.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Arlista from "./components/Arlista.jsx";
 import Login from "./components/Login.jsx";
+import Register from "./components/Register.jsx";
 import Profile from "./components/Profile.jsx";
 import Services from "./components/Services.jsx";
 import Cart from "./components/Cart.jsx";
@@ -201,7 +202,9 @@ export default function App() {
         />
       )}
 
-      {page === "login" && <Login auth={authActions} me={me} />}
+      {page === "login" && <Login auth={authActions} me={me} setPage={setPage} />}
+
+      {page === "register" && <Register auth={authActions} me={me} setPage={setPage} />}
 
       {page === "profile" && (
         <Profile
