@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {createRating, getRatingAverage, getAllratings} from "../controller";
+import {createRating, getRatingAverage, getAllratings} from "./Ratings_Controller";
 import authenticateToken from "../authMiddleware";
 import verifyToken from "../authMiddleware";
 

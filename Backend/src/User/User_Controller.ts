@@ -1,0 +1,254 @@
+import { Request, Response } from "express";
+import mysql from "mysql2/promise";
+import config from "../config";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import {AuthRequest,OrderStats,Product,User,UserResponse,} from "../interface";
+import { uploadMiddleware, uploadMiddlewareMultiple } from "../uploadMiddleware";
+import { sendOrderConfirmation } from "../sendOrderMail";
+
+export const registerUser = async (req: AuthRequest, res: Response) => {
+  try {
+    await uploadMiddleware(req, res);
+
+    const { email, full_name, password, role } = req.body;
+
+    if (!email || !full_name || !password) {
+      return res.status(400).json("Hiányzó adatok");
+    }
+
+    const connection = await mysql.createConnection(config.database);
+
+    const [existing]: any = await connection.query(
+      "SELECT user_id FROM Users WHERE email = ?",
+      [email],
+    );
+
+    if (existing.length > 0) {
+      return res.status(409).json("Ez az email már foglalt.");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userRole = role && typeof role === "string" ? role : "user";
+
+    const profileImage = req.file ? req.file.filename : "default.png";
+
+    const [result]: any = await connection.query(
+      `INSERT INTO Users (name, email, password, registration_date, role, profile_image) 
+       VALUES (?, ?, ?, NOW(), ?, ?)`,
+      [full_name, email, hashedPassword, userRole, profileImage],
+    );
+
+    const user_id = result.insertId;
+
+    const accessToken = jwt.sign(
+      { user_id, email, role: userRole },
+      process.env.JWT_SECRET!,
+      { expiresIn: "1h" },
+    );
+
+    return res.status(201).json({
+      user_id,
+      email,
+      full_name,
+      role: userRole,
+      profile_image: profileImage,
+      accessToken,
+    });
+  } catch (err) {
+    console.error("Register error:", err);
+    return res.status(500).json("Szerver hiba");
+  }
+};
+
+export const loginUser = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json("Hiányzó adatok!");
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [rows] = await connection.query(
+      "SELECT user_id, name, email, password, role FROM Users WHERE email = ?",
+      [email],
+    );
+
+    const users = rows as User[];
+
+    if (users.length === 0) {
+      return res.status(401).json("Hibás email vagy jelszó");
+    }
+
+    const user = users[0];
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json("A jelszó nem lehet ugyan az mint az eredeti jelszó");
+    }
+
+    await connection.query(
+      "UPDATE Users SET last_login = NOW() WHERE user_id = ?",
+      [user.user_id],
+    );
+
+    const accessToken = jwt.sign(
+      { user_id: user.user_id, email: user.email, role: user.role },
+      process.env.JWT_SECRET!,
+      { expiresIn: "1h" },
+    );
+
+    return res.status(200).json({
+      user_id: user.user_id,
+      email: user.email,
+      full_name: user.name,
+      role: user.role,
+      accessToken,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json("Szerver hiba");
+  }
+};
+
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json("Hiányzó adatok");
+  }
+
+  const userId = req.user?.user_id;
+  if (!userId) {
+    return res.status(401).json("Nincs bejelentkezve");
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [rows] = await connection.query(
+      "SELECT password FROM Users WHERE user_id = ?",
+      [userId],
+    );
+
+    const users = rows as User[];
+
+    if (users.length === 0) {
+      return res.status(404).json("Felhasználó nem található");
+    }
+
+    const existingHashedPassword = users[0].password;
+
+    const isMatch = await bcrypt.compare(oldPassword, existingHashedPassword);
+    if (!isMatch) {
+      return res.status(401).json("A régi jelszó hibás");
+    }
+
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await connection.query("UPDATE Users SET password = ? WHERE user_id = ?", [
+      newHashedPassword,
+      userId,
+    ]);
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Password change error:", err);
+    return res.status(500).json("Szerver hiba");
+  }
+};
+
+export const getUserById = async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+
+  if (isNaN(userId)) {
+    return res.status(400).json("Hibás user ID");
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [rows] = await connection.query(
+      `SELECT user_id, email, name AS full_name, role, registration_date AS createdAt, last_login AS lastLogin FROM Users WHERE user_id = ?`,
+      [userId],
+    );
+    const users = rows as UserResponse[];
+
+    if (users.length === 0) {
+      return res.status(404).json("Felhasználó nem található");
+    }
+
+    return res.status(200).json(users[0]);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json("Szerver hiba");
+  }
+};
+
+export const updateUser = async (req: any, res: Response) => {
+  const userId = parseInt(req.params.id);
+  const { full_name, email } = req.body;
+
+  if (isNaN(userId)) return res.status(400).json({ message: "Hibás user ID" });
+
+  const fieldsToUpdate: any = {};
+  if (full_name) fieldsToUpdate.name = full_name;
+  if (email) fieldsToUpdate.email = email;
+
+  if (Object.keys(fieldsToUpdate).length === 0) {
+    return res.status(400).json({ message: "Nincs frissítendő mező" });
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const keys = Object.keys(fieldsToUpdate);
+    const values = keys.map((key) => fieldsToUpdate[key]);
+    values.push(userId);
+
+    const sql = `UPDATE Users SET ${keys
+      .map((k) => `${k} = ?`)
+      .join(", ")} WHERE user_id = ?`;
+
+    const [result] = (await connection.query(sql, values)) as any;
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json("Felhasználó nem található");
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json("Szerver hiba");
+  }
+};
+
+export const deleteUser = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ message: "Hiányzó felhasználó ID!" });
+  }
+
+  const connection = await mysql.createConnection(config.database);
+
+  try {
+    const [result]: any = await connection.execute(
+      "DELETE FROM Users WHERE user_id = ?",
+      [id],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json("Felhasználó nem található!");
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Delete error:", err);
+    return res.status(500).json("Szerver hiba");
+  }
+};

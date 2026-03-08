@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {createOrder, getOrder, updateOrderStatus, getUserOrders} from "../controller";
+import {createOrder, getOrder, updateOrderStatus, getUserOrders} from "./Orders_Controller";
 import authenticateToken, { checkAdmin } from "../authMiddleware";
 import verifyToken from "../authMiddleware";
 

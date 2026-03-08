@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {uploadFile, uploadFilesMultiple, downloadFile, deleteFile} from "../controller";
+import {uploadFile, uploadFilesMultiple, downloadFile, deleteFile} from "./UploadFile_Controller";
 import authenticateToken from "../authMiddleware";
 import verifyToken from "../authMiddleware";
 

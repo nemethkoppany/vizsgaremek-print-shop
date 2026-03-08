@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {createSystemLog, getAuditLogs} from "../controller";
+import {createSystemLog, getAuditLogs} from "./SystemLog_Controller";
 import { checkAdmin } from "../authMiddleware";
 import verifyToken from "../authMiddleware";
 

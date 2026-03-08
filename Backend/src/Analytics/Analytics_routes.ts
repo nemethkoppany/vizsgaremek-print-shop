@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {getOrderAnalytics, getLoginAnalytics} from "../controller";
+import {getOrderAnalytics, getLoginAnalytics} from "./Analytics_Controller";
 import authenticateToken, { checkAdmin } from "../authMiddleware";
 import verifyToken from "../authMiddleware";
 
