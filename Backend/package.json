@@ -29,9 +29,11 @@
   "typings": "./lib/index.d.ts",
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "@types/cypress": "^0.1.6",
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
+    "cypress": "^15.12.0",
     "nodemon": "^3.1.11",
     "tslint": "^5.20.1",
     "tsx": "^4.21.0",
