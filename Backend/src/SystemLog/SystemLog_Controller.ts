@@ -38,6 +38,9 @@ export const createSystemLog = async (req: AuthRequest, res: Response) => {
     console.error("Create system log error", err);
     return res.status(500).json("Szerver hiba");
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const getAuditLogs = async (req: AuthRequest, res: Response) => {
@@ -59,5 +62,8 @@ export const getAuditLogs = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error("Get audit logs error", err);
     return res.status(500).json("Szerver hiba");
+  }
+  finally {
+    await connection.end(); 
   }
 };

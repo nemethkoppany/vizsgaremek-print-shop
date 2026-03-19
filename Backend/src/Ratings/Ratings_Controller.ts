@@ -35,6 +35,9 @@ export const createRating = async (req: AuthRequest, res: Response) => {
       .status(500)
       .json({ error: "Nem sikerült menteni az értékelést." });
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const getRatingAverage = async (_req: any, res: Response) => {
@@ -53,6 +56,9 @@ export const getRatingAverage = async (_req: any, res: Response) => {
     console.error("GET average rating error: ", err);
     return res.status(500).json("Nem sikerült lekérni az értékeléseket");
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const getAllratings = async (_req: Request, res: Response) => {
@@ -66,5 +72,8 @@ export const getAllratings = async (_req: Request, res: Response) => {
   } catch (err) {
     console.error("Get ratings error: ", err);
     return res.status(500).json("Szerver hiba");
+  }
+  finally {
+    await connection.end(); 
   }
 };

@@ -36,6 +36,7 @@ export const uploadFile = async (req: AuthRequest, res: Response) => {
     console.error("File upload error:", err);
     return res.status(500).json({ error: "Fájl feltöltési hiba" });
   }
+  
 };
 
 export const uploadFilesMultiple = async (req: AuthRequest, res: Response) => {
@@ -95,10 +96,12 @@ export const downloadFile = async (req: any, res: any) => {
   } catch (err) {
     console.error("Download error:", err);
     return res.status(500).json({ error: "A fájl nem tölthető le!" });
+  }finally {
+    await connection.end(); 
   }
 };
 
-//Ez egyenlőre csak az adatbázisból törli az feltöltött fájlokat, az uploads mappból nem
+
 export const deleteFile = async (req: Request, res: Response) => {
   const fileId = req.params.id;
 
@@ -123,5 +126,7 @@ export const deleteFile = async (req: Request, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json("Szerver hiba");
+  }finally {
+    await connection.end(); 
   }
 };

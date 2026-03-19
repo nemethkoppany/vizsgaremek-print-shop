@@ -30,6 +30,9 @@ export const getProducts = async (_req: Request, res: Response) => {
     console.error("Get products error: ", err);
     return res.status(500).json("Szerver hiba");
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const getProductById = async (req: Request, res: Response) => {
@@ -67,6 +70,9 @@ export const getProductById = async (req: Request, res: Response) => {
     console.error("Get product by ID error", err);
     return res.status(500).json("Szerver hiba");
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const createProduct = async (req: AuthRequest, res: Response) => {
@@ -94,6 +100,9 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json("Szerver hiba");
+  }
+  finally {
+    await connection.end(); 
   }
 };
 
@@ -139,6 +148,9 @@ export const updateProduct = async (req: Request, res: Response) => {
     console.error(err);
     return res.status(500).json("Szerver hiba");
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const deleteProduct = async (req: Request, res: Response) => {
@@ -162,5 +174,8 @@ export const deleteProduct = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Delete product error: ", err);
     return res.status(500).json("Szerver hiba");
+  }
+  finally {
+    await connection.end(); 
   }
 };

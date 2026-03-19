@@ -32,6 +32,9 @@ export const getOrderAnalytics = async (req: Request, res: Response) => {
     console.error("Order analytics error:", err);
     return res.status(500).json("Szerver hiba");
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const getLoginAnalytics = async (req: Request, res: Response) => {
@@ -58,5 +61,8 @@ export const getLoginAnalytics = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Login analytics error: ", err);
     return res.status(500).json("Szerver hiba");
+  }
+  finally {
+    await connection.end(); 
   }
 };

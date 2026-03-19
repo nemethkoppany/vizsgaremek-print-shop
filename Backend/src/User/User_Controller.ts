@@ -112,6 +112,8 @@ export const loginUser = async (req: Request, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json("Szerver hiba");
+  }finally {
+    await connection.end(); 
   }
 };
 
@@ -159,6 +161,8 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error("Password change error:", err);
     return res.status(500).json("Szerver hiba");
+  }finally {
+    await connection.end(); 
   }
 };
 
@@ -186,6 +190,8 @@ export const getUserById = async (req: Request, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json("Szerver hiba");
+  }finally {
+    await connection.end(); 
   }
 };
 
@@ -224,6 +230,8 @@ export const updateUser = async (req: any, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json("Szerver hiba");
+  }finally {
+    await connection.end(); 
   }
 };
 
@@ -250,5 +258,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Delete error:", err);
     return res.status(500).json("Szerver hiba");
+  }finally {
+    await connection.end(); 
   }
 };

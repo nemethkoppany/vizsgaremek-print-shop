@@ -79,6 +79,9 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       .status(500)
       .json({ error: err.message || "Sikertelen rendelés" });
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const getOrder = async (req: Request, res: Response) => {
@@ -119,6 +122,9 @@ export const getOrder = async (req: Request, res: Response) => {
     console.error("Get order error", err);
     return res.status(500).json("Hiba a rendelés lekérdezésekor");
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
@@ -150,6 +156,9 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
     console.error("Update order status error:", err);
     return res.status(500).json("Szerver hiba");
   }
+  finally {
+    await connection.end(); 
+  }
 };
 
 export const getUserOrders = async (req: AuthRequest, res: Response) => {
@@ -175,5 +184,8 @@ export const getUserOrders = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error("Get user orders error: ", err);
     return res.status(500).json("Szerver hiba");
+  }
+  finally {
+    await connection.end(); 
   }
 };
