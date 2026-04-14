@@ -161,3 +161,14 @@ ADD profile_image VARCHAR(255) DEFAULT 'default.png';
 
 
 SELECT user_id, email, profile_image FROM Users;
+
+INSERT INTO Products (name, description, base_price, in_stock, image_urls) VALUES
+('A4 fekete-fehér nyomtatás (egyoldalas)', 'A4-es fekete-fehér egyoldalas nyomtatás', 50, 1, NULL),
+('A4 színes nyomtatás (egyoldalas)', 'A4-es színes egyoldalas nyomtatás', 120, 1, NULL),
+('A3 fekete-fehér nyomtatás (egyoldalas)', 'A3-as fekete-fehér egyoldalas nyomtatás', 80, 1, NULL),
+('A3 színes nyomtatás (egyoldalas)', 'A3-as színes egyoldalas nyomtatás', 200, 1, NULL),
+('Poszter nyomtatás – tervrajz (80g)', 'Poszter nyomtatás 80g papírra', 500, 1, NULL),
+('Poszter nyomtatás – plakát (140g)', 'Poszter nyomtatás 140g papírra', 800, 1, NULL),
+('Poszter nyomtatás – fotópapír', 'Poszter nyomtatás fotópapírra', 1200, 1, NULL),
+('Falinaptár – 13 lapos A4', 'Falinaptár 13 lapos A4 méretben', 2500, 1, NULL),
+('Falinaptár – 13 lapos A3', 'Falinaptár 13 lapos A3 méretben', 3500, 1, NULL);
