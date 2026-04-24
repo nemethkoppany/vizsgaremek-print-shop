@@ -143,11 +143,11 @@ INSERT INTO Users (name, email, password, role)
 VALUES (
   'Admin',
   'admin@admin.hu',
-  '$2b$10$BIMZZ8mo0neMMkx7sCzK5uPLFyRPn2Tsn8UmNgbJohdBPGdRmps0y',
+  '$2b$10$Gu/focDiNij6WNUWz0L.rO/eWFD9xBVncV73pSpX5oK3vq7JQgtwW',
   'admin'
 );
  
-SHOW TABLES;
+--Admin1234 a jelszó
  
 SELECT user_id, email, role, profile_image
 FROM Users
